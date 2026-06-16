@@ -319,12 +319,16 @@ function buildRequest(p, key, model, {system, text, image, json}){
     const content = image
       ? [{type:"image",source:{type:"base64",media_type:"image/jpeg",data:image}},{type:"text",text}]
       : [{type:"text",text}];
+    // Claude has no JSON-mode flag — prefill the assistant turn with "{" to force a JSON object.
+    const messages=[{role:"user",content}];
+    if(json) messages.push({role:"assistant",content:"{"});
     return {
       url:"https://api.anthropic.com/v1/messages",
       headers:{ "Content-Type":"application/json","x-api-key":key,
         "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
-      body:{ model, max_tokens:1024, system, stream:true, messages:[{role:"user",content}] },
+      body:{ model, max_tokens:1024, system, stream:true, messages },
       extract:(j)=>(j.type==="content_block_delta"&&j.delta?.type==="text_delta")?(j.delta.text||""):"",
+      prefill: json ? "{" : "",
     };
   }
   // openai-compatible: openai, openrouter
@@ -347,7 +351,7 @@ async function streamLLM(req, onToken){
   const res=await fetch(req.url,{ method:"POST", headers:req.headers, body:JSON.stringify(req.body) });
   if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,400)); }
   const reader=res.body.getReader(); const dec=new TextDecoder();
-  let buf="", full="";
+  let buf="", full=req.prefill||"";
   while(true){
     const {done,value}=await reader.read(); if(done) break;
     buf+=dec.decode(value,{stream:true});
@@ -419,7 +423,7 @@ async function submit(override){
   if(!q||busy) return;
   const key=keyInp.value.trim(), model=modelInp.value.trim();
   if(!key){ showError("ยังไม่ได้ใส่ API key — กด ⚙ ตั้งค่า"); $("settings").style.display="flex"; return; }
-  busy=true; showError(""); $("input").value=""; $("sendBtn").classList.remove("ready");
+  busy=true; showError(""); $("input").value=""; finalText=""; $("sendBtn").classList.remove("ready");
   const image = screenOn ? captureFrame() : null;
 
   if(mode==="qa"){
