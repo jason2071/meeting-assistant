@@ -286,8 +286,12 @@ function modelsReq(p, key){
   if(p==="openai") return {
     url:"https://api.openai.com/v1/models",
     headers:{ "Authorization":"Bearer "+key },
-    // API ไม่ระบุ modality/pricing → heuristic: เอาเฉพาะ chat/vision family
-    extract:(j)=>(j.data||[]).map(m=>m.id).filter(id=>/^(gpt-4|o[134]|chatgpt)/.test(id)).sort().map(id=>({id})),
+    // API ไม่ระบุ modality/pricing → heuristic: เอา chat family (gpt-5/4.1/4o, o-series)
+    // ตัดพวก image-gen/audio/embedding/tts ที่ไม่ใช่ chat ออก
+    extract:(j)=>(j.data||[]).map(m=>m.id)
+      .filter(id=>/^(gpt-5|gpt-4\.1|gpt-4o|o[134])/.test(id)
+        && !/image|audio|realtime|tts|transcribe|embedding|moderation|dall-e|search/i.test(id))
+      .sort().map(id=>({id})),
   };
   // openrouter (public, ไม่ต้อง key) — pricing บอก free ได้จริง
   return {
