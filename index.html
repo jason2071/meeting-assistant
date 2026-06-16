@@ -148,6 +148,9 @@
   </div>
 </div>
 
+<!-- optional LOCAL-ONLY key config (gitignored). copy config.local.example.js → config.local.js.
+     sets window.__MA_KEYS__; used as a fallback only when no key is entered. 404 if absent (harmless). -->
+<script src="config.local.js"></script>
 <script>
 // ── Provider config ──────────────────────────────────────
 const PROVIDERS = {
@@ -194,6 +197,8 @@ const skey = {
 function getKey(p){
   let k = skey.get(keyKey(p));
   if(k===null){ const old = store.get(keyKey(p)); if(old){ skey.set(keyKey(p), old); store.remove(keyKey(p)); k = old; } }
+  // local-only fallback from config.local.js (window.__MA_KEYS__) — not persisted to sessionStorage
+  if(!k){ const env = (window.__MA_KEYS__||{})[p]; if(env) return env; }
   return k || "";
 }
 

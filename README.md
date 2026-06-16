@@ -36,6 +36,8 @@ python3 -m http.server 8000
 
 Key เก็บใน `sessionStorage` ของ tab นี้เท่านั้น (ล้างเมื่อปิด tab) — เรียก provider API ตรงจาก browser ไม่ผ่าน server กลาง
 
+**Local dev**: คัดลอก `config.local.example.js` → `config.local.js` (gitignored) แล้วใส่ key เพื่อ auto-fill ตอนเปิด ไม่ต้องพิมพ์ทุกครั้ง (ใช้เป็น fallback เฉพาะตอน key ว่าง, key ที่พิมพ์เองชนะเสมอ). ⚠️ key เป็น plaintext ที่ browser อ่านได้ — ใช้เฉพาะเครื่องตัวเอง **ห้าม deploy/แชร์ build ที่มี `config.local.js`**
+
 ## Architecture
 
 ทุกอย่าง (HTML/CSS/JS) อยู่ใน `index.html` ไม่มี dependency

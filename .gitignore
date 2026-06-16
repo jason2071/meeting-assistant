@@ -15,9 +15,10 @@ tmp/
 # Test / tooling artifacts
 .playwright-mcp/
 
-# Secrets / env (API keys live in browser localStorage, but never commit any leak)
+# Secrets / env (API keys live in the browser, but never commit any leak)
 .env
 .env.*
 !.env.example
+config.local.js
 *.key
 secrets.*
