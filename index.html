@@ -71,6 +71,11 @@
     color:var(--muted); font-size:10.5px; font-weight:600; padding:2px 9px; }
   .ans .codecopy:hover { color:var(--teal); border-color:var(--teal); }
   .ans .codeblock pre { margin:0; border:none; border-radius:0; }
+  .ans pre code .hl-kw  { color:#C792EA; }
+  .ans pre code .hl-str { color:#9ECE6A; }
+  .ans pre code .hl-num { color:#F78C6C; }
+  .ans pre code .hl-com { color:#6B7A8D; font-style:italic; }
+  .ans pre code .hl-fn  { color:#82AAFF; }
   .ans > :first-child { margin-top:0; }  .ans > :last-child { margin-bottom:0; }
   .tag { display:inline-flex; align-items:center; gap:4px; font-size:10.5px; color:var(--teal);
     background:rgba(45,212,191,.08); border:1px solid var(--border); border-radius:5px; padding:2px 6px; }
@@ -526,6 +531,21 @@ results.addEventListener("click",(e)=>{
 
 function el(tag,cls,html){ const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; }
 function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+// lightweight, language-agnostic syntax highlighting for code blocks (input is HTML-escaped). No deps.
+const HL_KW=new Set("func return if else elif for range while switch case default break continue var let const type struct interface enum class extends implements new import export from package map chan go defer select public private protected static void def self async await yield try catch finally throw throws in of is as with lambda pass this super fn use mut match where and or not nil null None undefined true false True False".split(" "));
+function highlightCode(code){
+  const TOKEN=/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b\d[\w.]*\b)|([A-Za-z_$][\w$]*)(\s*\()?/g;
+  return code.replace(TOKEN,(m,com,str,num,word,paren)=>{
+    if(com) return `<span class="hl-com">${com}</span>`;
+    if(str) return `<span class="hl-str">${str}</span>`;
+    if(num) return `<span class="hl-num">${num}</span>`;
+    if(word){
+      if(HL_KW.has(word)) return `<span class="hl-kw">${word}</span>`+(paren||"");
+      if(paren) return `<span class="hl-fn">${word}</span>`+paren;
+    }
+    return m;
+  });
+}
 // minimal markdown → HTML for streamed answers (escape first, then format). No deps.
 function mdToHtml(src){
   const blocks=[];
@@ -534,7 +554,7 @@ function mdToHtml(src){
   const close=()=>{ if(list){ html+=`</${list}>`; list=null; } };
   for(let line of lines){
     const fence=line.trim().match(/^ (\d+) $/);
-    if(fence){ close(); const b=blocks[+fence[1]]; html+=`<div class="codeblock"><div class="codebar"><span>${b.lang||"code"}</span><button class="codecopy" type="button">copy</button></div><pre><code>${b.code}</code></pre></div>`; continue; }
+    if(fence){ close(); const b=blocks[+fence[1]]; html+=`<div class="codeblock"><div class="codebar"><span>${b.lang||"code"}</span><button class="codecopy" type="button">copy</button></div><pre><code>${highlightCode(b.code)}</code></pre></div>`; continue; }
     line=line.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/`([^`]+)`/g,"<code>$1</code>");
     let m;
     if(m=line.match(/^\s*#{1,6}\s+(.*)$/)){ close(); html+=`<h4>${m[1]}</h4>`; }
