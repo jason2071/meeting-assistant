@@ -138,6 +138,11 @@
       <div class="lbl" style="margin-bottom:6px">API KEY <span id="keyHint" style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)"></span></div>
       <input id="apikey" type="password" style="width:100%" placeholder="วาง API key ที่นี่" autocomplete="off" />
     </div>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">⚡ ส่งอัตโนมัติหลังเงียบ</div>
+      <input id="silenceSec" type="number" min="0.5" max="6" step="0.1" style="width:84px" />
+      <span class="mono" style="font-size:11px;color:var(--muted)">วินาที · default 1.8 สำหรับถามสด</span>
+    </div>
     <div class="mono" style="font-size:11px;color:var(--muted)">
       key เก็บใน sessionStorage ของ tab นี้เท่านั้น (ล้างเมื่อปิด tab) ไม่ส่งไปไหนนอกจาก provider ที่เลือก
     </div>
@@ -241,11 +246,12 @@ let lang = "th-TH";
 let autoSend = true;
 let micOn = false, screenOn = false;
 let busy = false;
+let silenceMs = +store.get("ma_silence") || 1800;  // auto-send delay after silence (ปรับได้, default ถามสด)
 
 // ── DOM ──
 const $ = (id)=>document.getElementById(id);
 const providerSel=$("provider"), modelInp=$("model"), modelSel=$("modelSel"), keyInp=$("apikey"), keyHint=$("keyHint");
-const fetchBtn=$("fetchModels"), freeBtn=$("freeFilter"), modelStatus=$("modelStatus");
+const fetchBtn=$("fetchModels"), freeBtn=$("freeFilter"), modelStatus=$("modelStatus"), silenceInp=$("silenceSec");
 const results=$("results"), empty=$("empty"), errBox=$("error"), statusEl=$("status");
 const dot=$("dot"), countEl=$("count");
 
@@ -369,6 +375,11 @@ function setMode(m){
 
 // ── Toggles ──
 $("autoBtn").onclick=()=>{ autoSend=!autoSend; $("autoBtn").classList.toggle("on",autoSend); };
+silenceInp.value = (silenceMs/1000).toFixed(1);
+silenceInp.onchange=()=>{
+  let s=parseFloat(silenceInp.value); if(isNaN(s)) s=1.8; s=Math.min(6,Math.max(0.5,s));
+  silenceMs=Math.round(s*1000); silenceInp.value=s.toFixed(1); store.set("ma_silence", silenceMs);
+};
 $("thBtn").onclick=()=>setLang("th-TH");
 $("enBtn").onclick=()=>setLang("en-US");
 function setLang(l){ lang=l; $("thBtn").classList.toggle("on",l==="th-TH"); $("enBtn").classList.toggle("on",l==="en-US"); if(rec) rec.lang=l; }
@@ -428,7 +439,7 @@ function buildRec(){
     $("input").value=(finalText+interim).trim();
     if(autoSend && finalText.trim()){
       clearTimeout(silenceTimer);
-      silenceTimer=setTimeout(voiceSend,1300);
+      silenceTimer=setTimeout(voiceSend,silenceMs);
     }
   };
   r.onerror=(e)=>{ if(e.error==="not-allowed") showError("ไม่ได้รับอนุญาตให้ใช้ไมค์ — เปิดสิทธิ์ใน browser ก่อน"); };
