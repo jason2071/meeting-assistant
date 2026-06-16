@@ -34,7 +34,7 @@ python3 -m http.server 8000
 | OpenAI | platform.openai.com/api-keys | `gpt-4o-mini` |
 | Anthropic (Claude) | console.anthropic.com | `claude-opus-4-8` |
 
-Key เก็บใน `localStorage` ของเครื่องนี้เท่านั้น — เรียก provider API ตรงจาก browser ไม่ผ่าน server กลาง
+Key เก็บใน `sessionStorage` ของ tab นี้เท่านั้น (ล้างเมื่อปิด tab) — เรียก provider API ตรงจาก browser ไม่ผ่าน server กลาง
 
 ## Architecture
 
@@ -43,7 +43,7 @@ Key เก็บใน `localStorage` ของเครื่องนี้เ
 - **`PROVIDERS` / `buildRequest` / `streamLLM` / `modelsReq`** — แกนหลัก รวม 4 provider API ที่ request/auth/SSE ต่างกันให้เป็น interface เดียว (`buildRequest` = chat, `modelsReq` = ดึงรายชื่อ model กรอง vision) เพิ่ม provider แก้แค่จุดนี้
 - **ปุ่ม ↻ fetch models** — ดึง model list จริงจาก provider (vision-only) cache ใน localStorage; fetch ล้มเหลว (CORS/key ผิด) → fallback เป็น preset ใน `PROVIDERS[p].models`
 - **`QA_SYSTEM` / `EST_SYSTEM`** — system prompt ของแต่ละโหมด (hardcode stack + โทนของทีม) แก้ที่นี่เพื่อปรับพฤติกรรม AI
-- **voice loop** (`buildRec` / `voiceSend`), **screen capture** (`captureFrame`), **localStorage** (`store`)
+- **voice loop** (`buildRec` / `voiceSend`), **screen capture** (`captureFrame`), **storage** — `store` (localStorage: provider/model/cache) + `skey` (sessionStorage: API keys)
 
 ดูรายละเอียดเพิ่มใน [`CLAUDE.md`](./CLAUDE.md)
 

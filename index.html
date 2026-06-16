@@ -108,7 +108,7 @@
       <input id="apikey" type="password" style="width:100%" placeholder="วาง API key ที่นี่" autocomplete="off" />
     </div>
     <div class="mono" style="font-size:11px;color:var(--muted)">
-      key เก็บไว้ใน browser ของเครื่องนี้เท่านั้น (localStorage) ไม่ส่งไปไหนนอกจาก provider ที่เลือก
+      key เก็บใน sessionStorage ของ tab นี้เท่านั้น (ล้างเมื่อปิด tab) ไม่ส่งไปไหนนอกจาก provider ที่เลือก
     </div>
   </div>
 
@@ -183,7 +183,19 @@ const EST_SYSTEM =
 const store = {
   get(k){ try { return localStorage.getItem(k); } catch { return null; } },
   set(k,v){ try { localStorage.setItem(k,v); } catch {} },
+  remove(k){ try { localStorage.removeItem(k); } catch {} },
 };
+// API keys live in sessionStorage only — cleared when the tab closes
+const skey = {
+  get(k){ try { return sessionStorage.getItem(k); } catch { return null; } },
+  set(k,v){ try { sessionStorage.setItem(k,v); } catch {} },
+};
+// migrate a key previously persisted in localStorage into sessionStorage, then purge it
+function getKey(p){
+  let k = skey.get(keyKey(p));
+  if(k===null){ const old = store.get(keyKey(p)); if(old){ skey.set(keyKey(p), old); store.remove(keyKey(p)); k = old; } }
+  return k || "";
+}
 
 // ── State ──
 let provider = store.get("ma_provider") || "gemini";
@@ -218,7 +230,7 @@ function loadProvider(p){
   modelInp.value = store.get(modelKey(p)) || PROVIDERS[p].defaultModel;
   const cached = JSON.parse(store.get(modelsKey(p)) || "null");
   setModelOptions(cached || PROVIDERS[p].models || []);
-  keyInp.value = store.get(keyKey(p)) || "";
+  keyInp.value = getKey(p);
   keyHint.textContent = "· "+PROVIDERS[p].hint;
   modelStatus.textContent = cached ? cached.length+" model" : "";
   store.set("ma_provider", p);
@@ -281,7 +293,7 @@ modelSel.onchange = ()=>{
   else { modelInp.value=modelSel.value; modelInp.style.display="none"; store.set(modelKey(provider), modelSel.value); }
 };
 modelInp.oninput = ()=>store.set(modelKey(provider), modelInp.value.trim());
-keyInp.oninput = ()=>store.set(keyKey(provider), keyInp.value.trim());
+keyInp.oninput = ()=>skey.set(keyKey(provider), keyInp.value.trim());
 loadProvider(provider);
 
 $("gear").onclick = ()=>{ const s=$("settings"); s.style.display = s.style.display==="none"?"flex":"none"; };
