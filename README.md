@@ -21,7 +21,7 @@ python3 -m http.server 8000
 
 > ต้องใช้ **Chrome / Edge** — `SpeechRecognition` (ฟังเสียง) ไม่รองรับบน Firefox/Safari ส่วน text input ใช้ได้ทุกเบราว์เซอร์
 
-1. กด ⚙ → เลือก **provider** + ใส่ **API key**
+1. กด ⚙ → เลือก **provider** + **model** (เลือกจาก preset หรือพิมพ์ model id เองได้) + ใส่ **API key**
 2. เลือกโหมด **🧠 ถาม AI** หรือ **📊 ประเมินงาน**
 3. พิมพ์ หรือกด 🎤 เริ่มฟัง / 🖥 แชร์จอ แล้วถามได้เลย (`⌘/Ctrl + Enter` เพื่อส่ง)
 

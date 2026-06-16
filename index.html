@@ -94,7 +94,8 @@
       </div>
       <div>
         <div class="lbl" style="margin-bottom:6px">MODEL</div>
-        <input id="model" style="width:100%" placeholder="model id" />
+        <input id="model" list="modelList" style="width:100%" placeholder="เลือก หรือพิมพ์ model id" />
+        <datalist id="modelList"></datalist>
       </div>
     </div>
     <div>
@@ -146,13 +147,17 @@
 // ── Provider config ──────────────────────────────────────
 const PROVIDERS = {
   openrouter: { label:"OpenRouter", defaultModel:"openai/gpt-4o-mini",
-    hint:"จาก openrouter.ai/keys", vision:true },
+    hint:"จาก openrouter.ai/keys", vision:true,
+    models:["openai/gpt-4o-mini","openai/gpt-4o","anthropic/claude-sonnet-4.5","google/gemini-2.5-flash"] },
   gemini: { label:"Gemini", defaultModel:"gemini-2.5-flash",
-    hint:"จาก aistudio.google.com/apikey (ฟรี)", vision:true },
+    hint:"จาก aistudio.google.com/apikey (ฟรี)", vision:true,
+    models:["gemini-2.5-flash","gemini-2.5-pro","gemini-2.0-flash"] },
   openai: { label:"OpenAI", defaultModel:"gpt-4o-mini",
-    hint:"จาก platform.openai.com/api-keys", vision:true },
+    hint:"จาก platform.openai.com/api-keys", vision:true,
+    models:["gpt-4o-mini","gpt-4o","o4-mini"] },
   claude: { label:"Claude", defaultModel:"claude-opus-4-8",
-    hint:"จาก console.anthropic.com · เร็ว/ถูกกว่าใช้ claude-haiku-4-5", vision:true },
+    hint:"จาก console.anthropic.com · เร็ว/ถูกกว่าใช้ claude-haiku-4-5", vision:true,
+    models:["claude-opus-4-8","claude-sonnet-4-6","claude-haiku-4-5"] },
 };
 
 const QA_SYSTEM =
@@ -194,6 +199,7 @@ function modelKey(p){ return "ma_model_"+p; }
 function keyKey(p){ return "ma_key_"+p; }
 function loadProvider(p){
   provider = p; providerSel.value = p;
+  $("modelList").innerHTML = (PROVIDERS[p].models||[]).map(m=>`<option value="${m}">`).join("");
   modelInp.value = store.get(modelKey(p)) || PROVIDERS[p].defaultModel;
   keyInp.value = store.get(keyKey(p)) || "";
   keyHint.textContent = "· "+PROVIDERS[p].hint;
