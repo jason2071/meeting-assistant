@@ -1,0 +1,19 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Logs / temp
+*.log
+tmp/
+.cache/
+
+# Secrets / env (API keys live in browser localStorage, but never commit any leak)
+.env
+.env.*
+*.key
+secrets.*
