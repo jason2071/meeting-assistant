@@ -12,6 +12,9 @@ Thumbs.db
 tmp/
 .cache/
 
+# Test / tooling artifacts
+.playwright-mcp/
+
 # Secrets / env (API keys live in browser localStorage, but never commit any leak)
 .env
 .env.*
