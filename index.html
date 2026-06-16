@@ -52,7 +52,18 @@
   .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px; margin-top:14px; }
   .q { font-size:13px; color:var(--muted); margin-bottom:12px; padding-bottom:12px;
     border-bottom:1px solid var(--border); font-weight:500; display:flex; align-items:center; gap:8px; }
-  .ans { font-size:14px; line-height:1.65; color:var(--text); white-space:pre-wrap; }
+  .ans { font-size:14px; line-height:1.7; color:var(--text); }
+  .ans p { margin:8px 0; }
+  .ans h4 { font-size:14px; font-weight:700; color:var(--text); margin:14px 0 6px; }
+  .ans ul, .ans ol { margin:8px 0; padding-left:20px; }
+  .ans li { margin:4px 0; }
+  .ans strong { color:#fff; font-weight:700; }
+  .ans code { font-family:ui-monospace,Menlo,monospace; font-size:12.5px; color:var(--teal);
+    background:var(--panel2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; }
+  .ans pre { background:var(--panel2); border:1px solid var(--border); border-radius:8px;
+    padding:10px 12px; overflow-x:auto; margin:10px 0; }
+  .ans pre code { background:none; border:none; padding:0; color:var(--text); line-height:1.55; }
+  .ans > :first-child { margin-top:0; }  .ans > :last-child { margin-bottom:0; }
   .tag { display:inline-flex; align-items:center; gap:4px; font-size:10.5px; color:var(--teal);
     background:rgba(45,212,191,.08); border:1px solid var(--border); border-radius:5px; padding:2px 6px; }
   .stack { font-size:12px; color:var(--teal); background:rgba(45,212,191,.08);
@@ -498,6 +509,26 @@ $("clear").onclick=()=>{ results.innerHTML=""; items=0; bumpCount(); };
 
 function el(tag,cls,html){ const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; }
 function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+// minimal markdown → HTML for streamed answers (escape first, then format). No deps.
+function mdToHtml(src){
+  const blocks=[];
+  let s = esc(src).replace(/```(?:\w+)?\n?([\s\S]*?)```/g,(m,c)=>{ blocks.push(c.replace(/\n$/,"")); return ` ${blocks.length-1} `; });
+  const lines=s.split("\n"); let html="", list=null;
+  const close=()=>{ if(list){ html+=`</${list}>`; list=null; } };
+  for(let line of lines){
+    const fence=line.trim().match(/^ (\d+) $/);
+    if(fence){ close(); html+=`<pre><code>${blocks[+fence[1]]}</code></pre>`; continue; }
+    line=line.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/`([^`]+)`/g,"<code>$1</code>");
+    let m;
+    if(m=line.match(/^\s*#{1,6}\s+(.*)$/)){ close(); html+=`<h4>${m[1]}</h4>`; }
+    else if(m=line.match(/^\s*[-*]\s+(.*)$/)){ if(list!=="ul"){close();html+="<ul>";list="ul";} html+=`<li>${m[1]}</li>`; }
+    else if(m=line.match(/^\s*\d+[.)]\s+(.*)$/)){ if(list!=="ol"){close();html+="<ol>";list="ol";} html+=`<li>${m[1]}</li>`; }
+    else if(line.trim()){ close(); html+=`<p>${line}</p>`; }
+    else close();
+  }
+  close();
+  return html;
+}
 
 function newCard(q, hadImage){
   const card=el("div","card");
@@ -555,8 +586,8 @@ async function submit(override){
     const ans=el("div","ans","▍"); card.appendChild(ans);
     try{
       const req=buildRequest(provider,key,model,{system:QA_SYSTEM,text:q,image,json:false});
-      await streamLLM(req,(full)=>{ ans.textContent=full; });
-      if(!ans.textContent) ans.textContent="(ไม่มีคำตอบ)";
+      await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); });
+      if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
     }catch(e){ ans.textContent=""; ans.appendChild(el("span","warn","⚠ "+esc(e.message))); }
   } else {
     const card=newCard(q, !!image);
