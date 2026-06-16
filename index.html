@@ -67,6 +67,8 @@
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   @media (max-width:560px){ .grid{ grid-template-columns:1fr; } }
   a { color:var(--teal); }
+  #freeFilter.on { border-color:var(--teal); color:var(--teal); background:rgba(45,212,191,.1); }
+  #freeFilter:disabled { opacity:.4; cursor:not-allowed; }
 </style>
 </head>
 <body>
@@ -97,6 +99,8 @@
           <span>MODEL</span>
           <button id="fetchModels" type="button" title="โหลดรายชื่อ model จาก provider"
             style="background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--muted);width:22px;height:22px;font-size:13px;line-height:1;padding:0">↻</button>
+          <button id="freeFilter" type="button" title="กรองเฉพาะ model ฟรี"
+            style="background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--muted);height:22px;padding:0 9px;font-size:11px;font-weight:700;letter-spacing:0">Free</button>
           <span id="modelStatus" class="mono" style="font-weight:500;letter-spacing:0;color:var(--muted)"></span>
         </div>
         <select id="modelSel" style="width:100%"></select>
@@ -213,7 +217,7 @@ let busy = false;
 // ── DOM ──
 const $ = (id)=>document.getElementById(id);
 const providerSel=$("provider"), modelInp=$("model"), modelSel=$("modelSel"), keyInp=$("apikey"), keyHint=$("keyHint");
-const fetchBtn=$("fetchModels"), modelStatus=$("modelStatus");
+const fetchBtn=$("fetchModels"), freeBtn=$("freeFilter"), modelStatus=$("modelStatus");
 const results=$("results"), empty=$("empty"), errBox=$("error"), statusEl=$("status");
 const dot=$("dot"), countEl=$("count");
 
@@ -228,15 +232,25 @@ function modelStatusText(items){
   const free=items.filter(m=>m.free).length;
   return items.length+" model"+(free?` · ${free} free`:"");
 }
-// Fill the model <select> from a list, keeping modelInp.value selected (or "custom").
-function setModelOptions(list){
-  const items=normModels(list);
+// current normalized model list + "free only" toggle (re-filters without refetching)
+let modelsList=[], freeOnly=false;
+function renderModelOptions(){
+  const items = freeOnly ? modelsList.filter(m=>m.free) : modelsList;
   modelSel.innerHTML = items.map(m=>`<option value="${m.id}">${m.id}${m.free?" · free":""}</option>`).join("")
     + `<option value="${CUSTOM}">✏️ พิมพ์เอง…</option>`;
   const cur = modelInp.value, ids=items.map(m=>m.id);
   if(ids.includes(cur)){ modelSel.value = cur; modelInp.style.display="none"; }
   else { modelSel.value = CUSTOM; modelInp.style.display="block"; }
 }
+// Set the full list, keeping modelInp.value selected (or "custom").
+function setModelOptions(list){
+  modelsList = normModels(list);
+  const hasFree = modelsList.some(m=>m.free);
+  freeBtn.disabled = !hasFree;
+  if(!hasFree && freeOnly){ freeOnly=false; freeBtn.classList.remove("on"); }
+  renderModelOptions();
+}
+freeBtn.onclick = ()=>{ freeOnly=!freeOnly; freeBtn.classList.toggle("on",freeOnly); renderModelOptions(); };
 function loadProvider(p){
   provider = p; providerSel.value = p;
   modelInp.value = store.get(modelKey(p)) || PROVIDERS[p].defaultModel;
