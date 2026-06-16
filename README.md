@@ -21,7 +21,7 @@ python3 -m http.server 8000
 
 > ต้องใช้ **Chrome / Edge** — `SpeechRecognition` (ฟังเสียง) ไม่รองรับบน Firefox/Safari ส่วน text input ใช้ได้ทุกเบราว์เซอร์
 
-1. กด ⚙ → เลือก **provider** + **model** (เลือกจาก preset หรือพิมพ์ model id เองได้) + ใส่ **API key**
+1. กด ⚙ → เลือก **provider** + ใส่ **API key** → เลือก **model** (กด ↻ เพื่อดึงรายชื่อ model จริงจาก provider มาเลือก, หรือพิมพ์ model id เอง)
 2. เลือกโหมด **🧠 ถาม AI** หรือ **📊 ประเมินงาน**
 3. พิมพ์ หรือกด 🎤 เริ่มฟัง / 🖥 แชร์จอ แล้วถามได้เลย (`⌘/Ctrl + Enter` เพื่อส่ง)
 
@@ -40,7 +40,8 @@ Key เก็บใน `localStorage` ของเครื่องนี้เ
 
 ทุกอย่าง (HTML/CSS/JS) อยู่ใน `index.html` ไม่มี dependency
 
-- **`PROVIDERS` / `buildRequest` / `streamLLM`** — แกนหลัก รวม 4 provider API ที่ request/auth/SSE ต่างกันให้เป็น interface เดียว เพิ่ม provider หรือเปลี่ยน model แก้แค่ 2 จุดนี้
+- **`PROVIDERS` / `buildRequest` / `streamLLM` / `modelsReq`** — แกนหลัก รวม 4 provider API ที่ request/auth/SSE ต่างกันให้เป็น interface เดียว (`buildRequest` = chat, `modelsReq` = ดึงรายชื่อ model กรอง vision) เพิ่ม provider แก้แค่จุดนี้
+- **ปุ่ม ↻ fetch models** — ดึง model list จริงจาก provider (vision-only) cache ใน localStorage; fetch ล้มเหลว (CORS/key ผิด) → fallback เป็น preset ใน `PROVIDERS[p].models`
 - **`QA_SYSTEM` / `EST_SYSTEM`** — system prompt ของแต่ละโหมด (hardcode stack + โทนของทีม) แก้ที่นี่เพื่อปรับพฤติกรรม AI
 - **voice loop** (`buildRec` / `voiceSend`), **screen capture** (`captureFrame`), **localStorage** (`store`)
 
