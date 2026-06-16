@@ -18,5 +18,6 @@ tmp/
 # Secrets / env (API keys live in browser localStorage, but never commit any leak)
 .env
 .env.*
+!.env.example
 *.key
 secrets.*
