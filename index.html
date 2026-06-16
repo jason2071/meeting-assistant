@@ -67,7 +67,10 @@
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   @media (max-width:560px){ .grid{ grid-template-columns:1fr; } }
   a { color:var(--teal); }
-  #freeFilter.on { border-color:var(--teal); color:var(--teal); background:rgba(45,212,191,.1); }
+  .minibtn { background:var(--panel2); border:1px solid var(--border); border-radius:6px;
+    color:var(--muted); line-height:1; transition:all .12s; }
+  #freeFilter.on { border-color:var(--teal); background:var(--teal); color:#06231F;
+    box-shadow:0 0 10px rgba(45,212,191,.45); }
   #freeFilter:disabled { opacity:.4; cursor:not-allowed; }
 </style>
 </head>
@@ -97,10 +100,10 @@
       <div>
         <div class="lbl" style="margin-bottom:6px;display:flex;align-items:center;gap:8px">
           <span>MODEL</span>
-          <button id="fetchModels" type="button" title="โหลดรายชื่อ model จาก provider"
-            style="background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--muted);width:22px;height:22px;font-size:13px;line-height:1;padding:0">↻</button>
-          <button id="freeFilter" type="button" title="กรองเฉพาะ model ฟรี"
-            style="background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--muted);height:22px;padding:0 9px;font-size:11px;font-weight:700;letter-spacing:0">Free</button>
+          <button id="fetchModels" type="button" class="minibtn" title="โหลดรายชื่อ model จาก provider"
+            style="width:22px;height:22px;font-size:13px;padding:0">↻</button>
+          <button id="freeFilter" type="button" class="minibtn" title="กรองเฉพาะ model ฟรี"
+            style="height:22px;padding:0 9px;font-size:11px;font-weight:700;letter-spacing:0">Free</button>
           <span id="modelStatus" class="mono" style="font-weight:500;letter-spacing:0;color:var(--muted)"></span>
         </div>
         <select id="modelSel" style="width:100%"></select>
