@@ -228,7 +228,6 @@ const dot=$("dot"), countEl=$("count");
 function modelKey(p){ return "ma_model_"+p; }
 function keyKey(p){ return "ma_key_"+p; }
 function modelsKey(p){ return "ma_models_"+p; }
-const CUSTOM="__custom__";
 // model list items can be plain id strings (presets) or {id, free} objects (fetched)
 function normModels(list){ return (list||[]).map(m=> typeof m==="string" ? {id:m} : m); }
 function modelStatusText(items){
@@ -236,14 +235,14 @@ function modelStatusText(items){
   return items.length+" model"+(free?` · ${free} free`:"");
 }
 // current normalized model list + "free only" toggle (re-filters without refetching)
+// modelInp (hidden) holds the canonical selected id; modelSel is the picker.
 let modelsList=[], freeOnly=false;
 function renderModelOptions(){
   const items = freeOnly ? modelsList.filter(m=>m.free) : modelsList;
-  modelSel.innerHTML = items.map(m=>`<option value="${m.id}">${m.id}${m.free?" · free":""}</option>`).join("")
-    + `<option value="${CUSTOM}">✏️ พิมพ์เอง…</option>`;
-  const cur = modelInp.value, ids=items.map(m=>m.id);
-  if(ids.includes(cur)){ modelSel.value = cur; modelInp.style.display="none"; }
-  else { modelSel.value = CUSTOM; modelInp.style.display="block"; }
+  modelSel.innerHTML = items.map(m=>`<option value="${m.id}">${m.id}${m.free?" · free":""}</option>`).join("");
+  const ids=items.map(m=>m.id);
+  if(ids.includes(modelInp.value)){ modelSel.value = modelInp.value; }
+  else if(ids.length){ modelSel.value = ids[0]; modelInp.value = ids[0]; store.set(modelKey(provider), ids[0]); }
 }
 // Set the full list, keeping modelInp.value selected (or "custom").
 function setModelOptions(list){
@@ -320,11 +319,7 @@ async function fetchModels(){
 }
 fetchBtn.onclick = fetchModels;
 providerSel.onchange = ()=>loadProvider(providerSel.value);
-modelSel.onchange = ()=>{
-  if(modelSel.value===CUSTOM){ modelInp.style.display="block"; modelInp.focus(); }
-  else { modelInp.value=modelSel.value; modelInp.style.display="none"; store.set(modelKey(provider), modelSel.value); }
-};
-modelInp.oninput = ()=>store.set(modelKey(provider), modelInp.value.trim());
+modelSel.onchange = ()=>{ modelInp.value=modelSel.value; store.set(modelKey(provider), modelSel.value); };
 keyInp.oninput = ()=>skey.set(keyKey(provider), keyInp.value.trim());
 loadProvider(provider);
 
