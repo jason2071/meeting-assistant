@@ -25,6 +25,34 @@ python3 -m http.server 8000
 2. เลือกโหมด **🧠 ถาม AI** หรือ **📊 ประเมินงาน**
 3. พิมพ์ หรือกด 🎤 เริ่มฟัง / 🖥 แชร์จอ แล้วถามได้เลย (`⌘/Ctrl + Enter` เพื่อส่ง)
 
+## ถอดเสียงประชุม (system audio) — macOS + BlackHole
+
+`SpeechRecognition` ฟังจาก **mic เท่านั้น** — เสียงคนอื่นในประชุม (ออกลำโพง/ผ่าน Zoom·Meet·Teams) ไม่เข้า mic. แก้ด้วยการ route เสียงระบบ → mic เสมือนด้วย [BlackHole](https://github.com/ExistentialAudio/BlackHole) (virtual audio driver ฟรี) แล้วแอปจะถอดเสียงประชุมเหมือนพูดเอง — ใช้ได้กับทุกแอป รวม Zoom native
+
+> วิธีนี้ไม่ต้องแก้ code — เป็น audio routing ระดับ OS
+
+**1. ติดตั้ง BlackHole 2ch**
+```bash
+brew install blackhole-2ch
+# หรือโหลด installer จาก existential.audio/blackhole
+```
+
+**2. สร้าง Multi-Output Device** (เพื่อให้ยังได้ยินเสียงเอง ขณะส่งเข้า BlackHole)
+- เปิด **Audio MIDI Setup** (`/Applications/Utilities`)
+- กด **＋** ล่างซ้าย → **Create Multi-Output Device**
+- ติ๊ก **BlackHole 2ch** + **ลำโพง/หูฟัง** ที่ใช้จริง
+- ตั้ง Multi-Output นี้เป็น **output** ของเครื่อง (เมนูเสียงบนแถบบน) → เสียงประชุมจะไปทั้งหูฟังและ BlackHole
+
+**3. ตั้ง input ของ browser เป็น BlackHole**
+- macOS: System Settings → Sound → **Input = BlackHole 2ch** (หรือเลือกใน site permission ของ Chrome)
+- หรือทำ **Aggregate Device** (BlackHole + mic จริง) ถ้าอยากให้ AI ได้ยินทั้งเสียงประชุม + เสียงเราพร้อมกัน
+
+**4. ใช้งาน** — กด 🎤 ในแอป → SpeechRecognition จะถอดเสียงที่วิ่งผ่าน BlackHole (= เสียงประชุม)
+
+> เลิกใช้: สลับ output/input กลับเป็นลำโพง/mic ปกติ
+>
+> **ข้อจำกัด:** getDisplayMedia จับ system audio ทั้งเครื่องบน macOS ไม่ได้ (จับได้แค่ tab audio) — BlackHole จึงเป็นทางเดียวที่ครอบ Zoom/Teams native บน mac
+
 ## API keys
 
 Default เลือกตัว fast tier เพราะแอปเป็น real-time (กด ↻ ดึง model ปัจจุบันเพิ่มได้)
