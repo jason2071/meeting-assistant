@@ -22,3 +22,6 @@ tmp/
 config.local.js
 *.key
 secrets.*
+
+# ui
+ui-fix/
