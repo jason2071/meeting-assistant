@@ -94,8 +94,8 @@
       </div>
       <div>
         <div class="lbl" style="margin-bottom:6px">MODEL</div>
-        <input id="model" list="modelList" style="width:100%" placeholder="เลือก หรือพิมพ์ model id" />
-        <datalist id="modelList"></datalist>
+        <select id="modelSel" style="width:100%"></select>
+        <input id="model" style="width:100%;margin-top:6px;display:none" placeholder="พิมพ์ model id" />
       </div>
     </div>
     <div>
@@ -190,22 +190,32 @@ let busy = false;
 
 // ── DOM ──
 const $ = (id)=>document.getElementById(id);
-const providerSel=$("provider"), modelInp=$("model"), keyInp=$("apikey"), keyHint=$("keyHint");
+const providerSel=$("provider"), modelInp=$("model"), modelSel=$("modelSel"), keyInp=$("apikey"), keyHint=$("keyHint");
 const results=$("results"), empty=$("empty"), errBox=$("error"), statusEl=$("status");
 const dot=$("dot"), countEl=$("count");
 
 // ── Settings init ──
 function modelKey(p){ return "ma_model_"+p; }
 function keyKey(p){ return "ma_key_"+p; }
+const CUSTOM="__custom__";
 function loadProvider(p){
   provider = p; providerSel.value = p;
-  $("modelList").innerHTML = (PROVIDERS[p].models||[]).map(m=>`<option value="${m}">`).join("");
-  modelInp.value = store.get(modelKey(p)) || PROVIDERS[p].defaultModel;
+  const models = PROVIDERS[p].models||[];
+  modelSel.innerHTML = models.map(m=>`<option value="${m}">${m}</option>`).join("")
+    + `<option value="${CUSTOM}">✏️ พิมพ์เอง…</option>`;
+  const cur = store.get(modelKey(p)) || PROVIDERS[p].defaultModel;
+  modelInp.value = cur;
+  if(models.includes(cur)){ modelSel.value = cur; modelInp.style.display="none"; }
+  else { modelSel.value = CUSTOM; modelInp.style.display="block"; }
   keyInp.value = store.get(keyKey(p)) || "";
   keyHint.textContent = "· "+PROVIDERS[p].hint;
   store.set("ma_provider", p);
 }
 providerSel.onchange = ()=>loadProvider(providerSel.value);
+modelSel.onchange = ()=>{
+  if(modelSel.value===CUSTOM){ modelInp.style.display="block"; modelInp.focus(); }
+  else { modelInp.value=modelSel.value; modelInp.style.display="none"; store.set(modelKey(provider), modelSel.value); }
+};
 modelInp.oninput = ()=>store.set(modelKey(provider), modelInp.value.trim());
 keyInp.oninput = ()=>store.set(keyKey(provider), keyInp.value.trim());
 loadProvider(provider);
