@@ -222,12 +222,19 @@ function modelKey(p){ return "ma_model_"+p; }
 function keyKey(p){ return "ma_key_"+p; }
 function modelsKey(p){ return "ma_models_"+p; }
 const CUSTOM="__custom__";
+// model list items can be plain id strings (presets) or {id, free} objects (fetched)
+function normModels(list){ return (list||[]).map(m=> typeof m==="string" ? {id:m} : m); }
+function modelStatusText(items){
+  const free=items.filter(m=>m.free).length;
+  return items.length+" model"+(free?` · ${free} free`:"");
+}
 // Fill the model <select> from a list, keeping modelInp.value selected (or "custom").
-function setModelOptions(models){
-  modelSel.innerHTML = models.map(m=>`<option value="${m}">${m}</option>`).join("")
+function setModelOptions(list){
+  const items=normModels(list);
+  modelSel.innerHTML = items.map(m=>`<option value="${m.id}">${m.id}${m.free?" · free":""}</option>`).join("")
     + `<option value="${CUSTOM}">✏️ พิมพ์เอง…</option>`;
-  const cur = modelInp.value;
-  if(models.includes(cur)){ modelSel.value = cur; modelInp.style.display="none"; }
+  const cur = modelInp.value, ids=items.map(m=>m.id);
+  if(ids.includes(cur)){ modelSel.value = cur; modelInp.style.display="none"; }
   else { modelSel.value = CUSTOM; modelInp.style.display="block"; }
 }
 function loadProvider(p){
@@ -237,7 +244,7 @@ function loadProvider(p){
   setModelOptions(cached || PROVIDERS[p].models || []);
   keyInp.value = getKey(p);
   keyHint.textContent = "· "+PROVIDERS[p].hint;
-  modelStatus.textContent = cached ? cached.length+" model" : "";
+  modelStatus.textContent = cached ? modelStatusText(normModels(cached)) : "";
   store.set("ma_provider", p);
   // auto-fetch real model list the first time (no cache yet) when we can reach the API
   if(!cached && (keyInp.value.trim() || p==="openrouter")) fetchModels();
@@ -249,26 +256,29 @@ function modelsReq(p, key){
     url:`https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${encodeURIComponent(key)}`,
     headers:{},
     // API ไม่ระบุ modality ราย model → กรอง chat (generateContent) + ตัด non-chat; gemini รุ่นใหม่ multimodal
+    // free ตรวจไม่ได้จาก API (free เป็น account tier ของ AI Studio)
     extract:(j)=>(j.models||[])
       .filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent") && !/embedding|aqa|imagen|image-generation|tts|veo/i.test(m.name))
-      .map(m=>m.name.replace(/^models\//,"")),
+      .map(m=>({id:m.name.replace(/^models\//,"")})),
   };
   if(p==="claude") return {
     url:"https://api.anthropic.com/v1/models?limit=100",
     headers:{ "x-api-key":key, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
-    extract:(j)=>(j.data||[]).map(m=>m.id), // Claude models เป็น vision ทั้งหมด
+    extract:(j)=>(j.data||[]).map(m=>({id:m.id})), // Claude models เป็น vision ทั้งหมด ไม่มี free
   };
   if(p==="openai") return {
     url:"https://api.openai.com/v1/models",
     headers:{ "Authorization":"Bearer "+key },
-    // API ไม่ระบุ modality → heuristic: เอาเฉพาะ chat/vision family
-    extract:(j)=>(j.data||[]).map(m=>m.id).filter(id=>/^(gpt-4|o[134]|chatgpt)/.test(id)).sort(),
+    // API ไม่ระบุ modality/pricing → heuristic: เอาเฉพาะ chat/vision family
+    extract:(j)=>(j.data||[]).map(m=>m.id).filter(id=>/^(gpt-4|o[134]|chatgpt)/.test(id)).sort().map(id=>({id})),
   };
-  // openrouter (public, ไม่ต้อง key)
+  // openrouter (public, ไม่ต้อง key) — pricing บอก free ได้จริง
   return {
     url:"https://openrouter.ai/api/v1/models",
     headers:{},
-    extract:(j)=>(j.data||[]).filter(m=>((m.architecture||{}).input_modalities||[]).includes("image")).map(m=>m.id).sort(),
+    extract:(j)=>(j.data||[]).filter(m=>((m.architecture||{}).input_modalities||[]).includes("image"))
+      .map(m=>({ id:m.id, free: !!(m.pricing && m.pricing.prompt==="0" && m.pricing.completion==="0") }))
+      .sort((a,b)=>a.id.localeCompare(b.id)),
   };
 }
 async function fetchModels(){
@@ -279,11 +289,11 @@ async function fetchModels(){
     const req=modelsReq(provider,key);
     const res=await fetch(req.url,{ headers:req.headers });
     if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,200)); }
-    const ids=req.extract(await res.json());
-    if(!ids||!ids.length) throw new Error("ไม่พบ model");
-    store.set(modelsKey(provider), JSON.stringify(ids));
-    setModelOptions(ids);
-    modelStatus.textContent=ids.length+" model";
+    const items=req.extract(await res.json());
+    if(!items||!items.length) throw new Error("ไม่พบ model");
+    store.set(modelsKey(provider), JSON.stringify(items));
+    setModelOptions(items);
+    modelStatus.textContent=modelStatusText(items);
   }catch(e){
     showError("โหลด model ไม่สำเร็จ: "+e.message+" — ใช้ list สำรอง");
     modelStatus.textContent="";
