@@ -160,19 +160,20 @@
 <script src="config.local.js"></script>
 <script>
 // ── Provider config ──────────────────────────────────────
+// preset/defaults เน้น fast tier (app นี้เป็น real-time) — กด ↻ ดึง list จริงเพิ่มได้
 const PROVIDERS = {
-  openrouter: { label:"OpenRouter", defaultModel:"openai/gpt-4o-mini",
+  openrouter: { label:"OpenRouter", defaultModel:"google/gemini-3-flash-preview",
     hint:"จาก openrouter.ai/keys", vision:true,
-    models:["openai/gpt-4o-mini","openai/gpt-4o","anthropic/claude-sonnet-4.5","google/gemini-2.5-flash"] },
-  gemini: { label:"Gemini", defaultModel:"gemini-2.5-flash",
-    hint:"จาก aistudio.google.com/apikey (ฟรี)", vision:true,
-    models:["gemini-2.5-flash","gemini-2.5-pro","gemini-2.0-flash"] },
-  openai: { label:"OpenAI", defaultModel:"gpt-4o-mini",
+    models:["google/gemini-3-flash-preview","google/gemini-3.1-flash-lite","openai/gpt-5.4-mini","anthropic/claude-haiku-4.5"] },
+  gemini: { label:"Gemini", defaultModel:"gemini-3-flash-preview",
+    hint:"จาก aistudio.google.com/apikey · free tier (Flash/Flash-Lite)", vision:true,
+    models:["gemini-3-flash-preview","gemini-3.1-flash-lite","gemini-3.5-flash","gemini-3.1-pro-preview"] },
+  openai: { label:"OpenAI", defaultModel:"gpt-5.4-mini",
     hint:"จาก platform.openai.com/api-keys", vision:true,
-    models:["gpt-4o-mini","gpt-4o","o4-mini"] },
-  claude: { label:"Claude", defaultModel:"claude-opus-4-8",
-    hint:"จาก console.anthropic.com · เร็ว/ถูกกว่าใช้ claude-haiku-4-5", vision:true,
-    models:["claude-opus-4-8","claude-sonnet-4-6","claude-haiku-4-5"] },
+    models:["gpt-5.4-mini","gpt-5.4","gpt-5.5","gpt-4.1-nano"] },
+  claude: { label:"Claude", defaultModel:"claude-haiku-4-5",
+    hint:"จาก console.anthropic.com · haiku ไว, sonnet/opus ฉลาดขึ้นแต่ช้ากว่า", vision:true,
+    models:["claude-haiku-4-5","claude-sonnet-4-6","claude-opus-4-8","claude-fable-5"] },
 };
 
 const QA_SYSTEM =

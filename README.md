@@ -27,12 +27,14 @@ python3 -m http.server 8000
 
 ## API keys
 
+Default เลือกตัว fast tier เพราะแอปเป็น real-time (กด ↻ ดึง model ปัจจุบันเพิ่มได้)
+
 | Provider | ที่ขอ key | Default model |
 |---|---|---|
-| OpenRouter | openrouter.ai/keys | `openai/gpt-4o-mini` |
-| Google Gemini | aistudio.google.com/apikey (ฟรี) | `gemini-2.5-flash` |
-| OpenAI | platform.openai.com/api-keys | `gpt-4o-mini` |
-| Anthropic (Claude) | console.anthropic.com | `claude-opus-4-8` |
+| Google Gemini | aistudio.google.com/apikey · free tier (Flash/Flash-Lite) | `gemini-3-flash-preview` |
+| OpenAI | platform.openai.com/api-keys | `gpt-5.4-mini` |
+| Anthropic (Claude) | console.anthropic.com | `claude-haiku-4-5` |
+| OpenRouter | openrouter.ai/keys | `google/gemini-3-flash-preview` |
 
 Key เก็บใน `sessionStorage` ของ tab นี้เท่านั้น (ล้างเมื่อปิด tab) — เรียก provider API ตรงจาก browser ไม่ผ่าน server กลาง
 
