@@ -63,6 +63,14 @@
   .ans pre { background:var(--panel2); border:1px solid var(--border); border-radius:8px;
     padding:10px 12px; overflow-x:auto; margin:10px 0; }
   .ans pre code { background:none; border:none; padding:0; color:var(--text); line-height:1.55; }
+  .ans .codeblock { margin:10px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--panel2); }
+  .ans .codebar { display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:5px 10px; background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+  .ans .codebar span { font-size:10.5px; font-weight:700; letter-spacing:.6px; color:var(--muted); text-transform:uppercase; }
+  .ans .codecopy { background:transparent; border:1px solid var(--border); border-radius:5px;
+    color:var(--muted); font-size:10.5px; font-weight:600; padding:2px 9px; }
+  .ans .codecopy:hover { color:var(--teal); border-color:var(--teal); }
+  .ans .codeblock pre { margin:0; border:none; border-radius:0; }
   .ans > :first-child { margin-top:0; }  .ans > :last-child { margin-bottom:0; }
   .tag { display:inline-flex; align-items:center; gap:4px; font-size:10.5px; color:var(--teal);
     background:rgba(45,212,191,.08); border:1px solid var(--border); border-radius:5px; padding:2px 6px; }
@@ -506,18 +514,27 @@ async function streamLLM(req, onToken){
 let items=0;
 function bumpCount(){ countEl.textContent=items+" รายการ"; $("clear").style.display=items?"flex":"none"; empty.style.display=items?"none":"block"; }
 $("clear").onclick=()=>{ results.innerHTML=""; items=0; bumpCount(); };
+// copy code blocks (delegated — survives stream re-renders)
+results.addEventListener("click",(e)=>{
+  const btn=e.target.closest(".codecopy"); if(!btn) return;
+  const code=btn.closest(".codeblock")?.querySelector("code");
+  if(!code) return;
+  navigator.clipboard?.writeText(code.textContent).then(()=>{
+    btn.textContent="copied"; setTimeout(()=>{ btn.textContent="copy"; },1200);
+  }).catch(()=>{});
+});
 
 function el(tag,cls,html){ const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; }
 function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 // minimal markdown → HTML for streamed answers (escape first, then format). No deps.
 function mdToHtml(src){
   const blocks=[];
-  let s = esc(src).replace(/```(?:\w+)?\n?([\s\S]*?)```/g,(m,c)=>{ blocks.push(c.replace(/\n$/,"")); return ` ${blocks.length-1} `; });
+  let s = esc(src).replace(/```(\w+)?\n?([\s\S]*?)```/g,(m,lang,c)=>{ blocks.push({code:c.replace(/\n$/,""),lang:lang||""}); return ` ${blocks.length-1} `; });
   const lines=s.split("\n"); let html="", list=null;
   const close=()=>{ if(list){ html+=`</${list}>`; list=null; } };
   for(let line of lines){
     const fence=line.trim().match(/^ (\d+) $/);
-    if(fence){ close(); html+=`<pre><code>${blocks[+fence[1]]}</code></pre>`; continue; }
+    if(fence){ close(); const b=blocks[+fence[1]]; html+=`<div class="codeblock"><div class="codebar"><span>${b.lang||"code"}</span><button class="codecopy" type="button">copy</button></div><pre><code>${b.code}</code></pre></div>`; continue; }
     line=line.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/`([^`]+)`/g,"<code>$1</code>");
     let m;
     if(m=line.match(/^\s*#{1,6}\s+(.*)$/)){ close(); html+=`<h4>${m[1]}</h4>`; }
