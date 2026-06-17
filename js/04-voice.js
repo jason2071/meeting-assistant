@@ -191,11 +191,13 @@ async function _hybridClipDone(){
   const blob=new Blob(audioChunks,{type:(mediaRec&&mediaRec.mimeType)||"audio/webm"});
   const fallback=hybridText.trim(); hybridText="";   // Web Speech ของคลิปนี้ (สำรองถ้า Gemini ล้ม)
   if(recOn) startHybridClip();   // เริ่มอัดคลิปถัดไปทันที (ไม่ให้ขาดช่วง) ถ้ายังไม่หยุด
-  clearVoicePreview();
+  // คงข้อความ rough ไว้ + "กำลังถอด" กันจอว่างระหว่างรอ Gemini (~1-2s) — จะถูกแทนด้วย bubble จริงตอนส่ง
+  updateVoicePreview((fallback?fallback+"  ":"")+"✨ กำลังถอด…");
   let text=fallback;
-  try{ const g=await transcribeAudioGemini(blob); if(g && g.trim()) text=g.trim(); }catch(e){ if(!fallback) showError("ถอดเสียงไม่สำเร็จ: "+esc(e.message)); }
+  try{ const g=await transcribeAudioGemini(blob); if(g && g.trim()) text=g.trim(); }catch(e){ clearVoicePreview(); if(!fallback) showError("ถอดเสียงไม่สำเร็จ: "+esc(e.message)); }
   text=(text||"").trim();
-  if(text){ hybridQ.push(text); _drainHybridQ(); }   // auto-cut = ส่งเสมอ (hands-free); คิวกัน busy
+  if(text){ hybridQ.push(text); _drainHybridQ(); }   // submit จะ clearVoicePreview + เพิ่ม bubble จริง (ไม่มีจอว่าง)
+  else clearVoicePreview();
 }
 async function toggleGeminiRecord(){
   if(recOn){  // หยุด: ปิด Web Speech + ตัดคลิปสุดท้าย (recOn=false → ไม่อัดต่อ) + ปิด stream
