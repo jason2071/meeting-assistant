@@ -1,0 +1,89 @@
+// 03-models.js — modelsReq + fetchModels + provider/model handlers + loadProvider() call + audio-device check
+// (classic script; loaded in numeric order — top-level globals shared across files)
+
+// ── Fetch model list per provider (parallel to buildRequest) ──
+function modelsReq(p, key){
+  if(p==="gemini") return {
+    url:`https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${encodeURIComponent(key)}`,
+    headers:{},
+    // API ไม่ระบุ modality ราย model → กรอง chat (generateContent) + ตัด non-chat; gemini รุ่นใหม่ multimodal
+    // free ตรวจไม่ได้จาก API (free เป็น account tier ของ AI Studio)
+    extract:(j)=>(j.models||[])
+      .filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent") && !/embedding|aqa|imagen|image-generation|tts|veo/i.test(m.name))
+      .map(m=>({id:m.name.replace(/^models\//,"")})),
+  };
+  if(p==="claude") return {
+    url:"https://api.anthropic.com/v1/models?limit=100",
+    headers:{ "x-api-key":key, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+    extract:(j)=>(j.data||[]).map(m=>({id:m.id})), // Claude models เป็น vision ทั้งหมด ไม่มี free
+  };
+  if(p==="openai") return {
+    url:"https://api.openai.com/v1/models",
+    headers:{ "Authorization":"Bearer "+key },
+    // API ไม่ระบุ modality/pricing → heuristic: เอา chat family (gpt-5/4.1/4o, o-series)
+    // ตัดพวก image-gen/audio/embedding/tts ที่ไม่ใช่ chat ออก
+    extract:(j)=>(j.data||[]).map(m=>m.id)
+      .filter(id=>/^(gpt-5|gpt-4\.1|gpt-4o|o[134])/.test(id)
+        && !/image|audio|realtime|tts|transcribe|embedding|moderation|dall-e|search/i.test(id))
+      .sort().map(id=>({id})),
+  };
+  // openrouter (public, ไม่ต้อง key) — pricing บอก free ได้จริง
+  return {
+    url:"https://openrouter.ai/api/v1/models",
+    headers:{},
+    extract:(j)=>(j.data||[]).filter(m=>((m.architecture||{}).input_modalities||[]).includes("image"))
+      .map(m=>({ id:m.id, free: !!(m.pricing && m.pricing.prompt==="0" && m.pricing.completion==="0") }))
+      .sort((a,b)=>a.id.localeCompare(b.id)),
+  };
+}
+async function fetchModels(){
+  const key = keyInp.value.trim();
+  if(!key && provider!=="openrouter"){ showError("ใส่ API key ก่อน fetch model"); return; }
+  fetchBtn.disabled=true; fetchBtn.classList.add("spin"); modelStatus.textContent="โหลด models…"; showError("");
+  try{
+    const req=modelsReq(provider,key);
+    const res=await fetch(req.url,{ headers:req.headers });
+    if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,200)); }
+    const items=req.extract(await res.json());
+    if(!items||!items.length) throw new Error("ไม่พบ model");
+    store.set(modelsKey(provider), JSON.stringify(items));
+    setModelOptions(items);
+    modelStatus.textContent=modelStatusText(items);
+  }catch(e){
+    showError("โหลด model ไม่สำเร็จ: "+e.message+" — ใช้ list สำรอง");
+    modelStatus.textContent="";
+  }finally{
+    fetchBtn.disabled=false; fetchBtn.classList.remove("spin");
+  }
+}
+fetchBtn.onclick = fetchModels;
+providerSel.onchange = ()=>loadProvider(providerSel.value);
+modelSel.onchange = ()=>{ modelInp.value=modelSel.value; store.set(modelKey(provider), modelSel.value); };
+keyInp.oninput = ()=>skey.set(keyKey(provider), keyInp.value.trim());
+// stack/บริบท (persist localStorage; default ว่าง = ไม่ pin ภาษา)
+$("stackCtx").value = store.get("ma_stack") || "";
+$("stackCtx").oninput = ()=>store.set("ma_stack", $("stackCtx").value.trim());
+loadProvider(provider);
+
+// ── ตรวจอุปกรณ์เสียง (ช่วยตั้ง BlackHole ให้ฟังเสียงผู้ถามจากระบบ) ──
+// หมายเหตุ: Web Speech เลือก device เองไม่ได้ — ตรวจได้แค่ว่ามี virtual device ติดตั้งไหม, ที่เหลือตั้งใน Chrome/OS
+async function checkAudioDevices(){
+  const box=$("sysAudioResult"); box.innerHTML=`<span style="color:var(--muted)">กำลังตรวจ…</span>`;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});  // ขอ permission เพื่ออ่านชื่อ device
+    stream.getTracks().forEach(t=>t.stop());
+    const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
+    const isVirtual=(l)=>/blackhole|aggregate|virtual|loopback|soundflower/i.test(l);
+    const found=devs.filter(d=>isVirtual(d.label));
+    const list=`<ul>${devs.map(d=>`<li class="${isVirtual(d.label)?"hit":""}">${esc(d.label||"(ไม่ทราบชื่อ)")}</li>`).join("")}</ul>`;
+    const head = found.length
+      ? `<span class="ok">✅ เจอ virtual device: ${esc(found.map(d=>d.label).join(", "))} — ตั้งเป็น <b>Input</b> ของ Chrome แล้วรีโหลด</span>`
+      : `<span class="warn2">⚠ ไม่พบ virtual audio device — ติดตั้ง BlackHole ก่อน (ดูขั้นตอนด้านบน)</span>`;
+    box.innerHTML = head + list + `<div class="mono" style="color:var(--muted);margin-top:6px">แอปบังคับ device ไม่ได้ — Web Speech ใช้ Input default ของ Chrome ต้องตั้งเอง</div>`;
+  }catch(e){
+    box.innerHTML=`<span class="warn2">⚠ ต้องอนุญาตไมค์เพื่อตรวจ device (${esc(e.name||e.message||"error")})</span>`;
+  }
+}
+$("checkAudioBtn").onclick=checkAudioDevices;
+
+// settings อยู่หน้าหลักแล้ว ไม่มีปุ่ม gear
