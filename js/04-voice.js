@@ -50,7 +50,7 @@ function syncGeminiKeyRow(){
 $("geminiKey").oninput = ()=>skey.set(keyKey("gemini"), $("geminiKey").value.trim());
 function applySttUI(){ $("sttWeb").classList.toggle("on",sttEngine==="web"); $("sttGemini").classList.toggle("on",sttEngine==="gemini"); syncGeminiKeyRow(); }
 function setStt(e){
-  if(micOn||paused||recOn) return;   // กำลังฟัง/อัด ห้ามสลับ
+  if(micOn||recOn) return;   // กำลังฟัง/อัด ห้ามสลับ
   if(e==="gemini" && !sttBackend().key){ showError("โหมดนี้ต้องมี key — ใช้ provider OpenRouter (มี credit) หรือใส่ Gemini key"); return; }
   sttEngine=e; store.set("ma_stt",e); applySttUI(); setMicUI();
 }
@@ -63,15 +63,14 @@ function refreshStatus(){
   const parts=[];
   if(recOn) parts.push('<span style="color:var(--red)">● กำลังฟัง (สด+AI) — เงียบแล้วถอด+ส่งเอง</span>');
   else if(micOn) parts.push('<span style="color:var(--red)">● กำลังฟัง</span>');
-  else if(paused) parts.push('<span style="color:var(--amber)">⏸ พักอยู่ — กด "ฟังต่อ" เพื่อฟังต่อ</span>');
   else if(stopped) parts.push('<span style="color:var(--muted)">⏹ จบการฟังแล้ว — พิมพ์ต่อได้ หรือเริ่ม session ใหม่เพื่อฟังอีก</span>');
   if(screenOn) parts.push('<span style="color:var(--teal)">🖼 AI เห็นจอด้วยทุกครั้งที่ถาม</span>');
   statusEl.innerHTML = parts.join("");
   statusEl.style.display = parts.length?"flex":"none";
-  $("ctrl").classList.toggle("active", micOn||screenOn||paused||recOn);
+  $("ctrl").classList.toggle("active", micOn||screenOn||recOn);
   dot.className = "dot"+((micOn||recOn)?" live":"");
 }
-// ปุ่มฟัง: idle(🎤 เริ่มฟัง) → listening(⏸ พัก + ⏹ จบ) → paused(▶ ฟังต่อ + ⏹ จบ). จบ=resume ไม่ได้, พัก=resume ได้
+// ปุ่มฟัง: toggle เดียว idle(🎤 เริ่มฟัง) ⇄ listening(⏹ หยุด) + ✂️ ส่งเลย — เหมือน gemini (หยุด=ไม่ terminal)
 function setMicUI(){
   // จบ (stopped) → ซ่อนปุ่ม mic + screen + stop ทั้งหมด (ฟังอีกต้องเริ่ม session ใหม่)
   if(stopped){
@@ -87,9 +86,10 @@ function setMicUI(){
     $("stopBtn").style.display = recOn ? "" : "none";
     return;
   }
-  b.className = "mic" + (micOn?" on":"") + (paused?" paused":"");
-  b.textContent = micOn ? "⏸ พัก" : (paused ? "▶ ฟังต่อ" : "🎤 เริ่มฟัง");
-  $("stopBtn").textContent="⏹ จบ"; $("stopBtn").style.display = (micOn||paused) ? "" : "none";
+  b.className = "mic" + (micOn?" on":"");   // web: toggle เริ่ม/หยุด + ✂️ ส่งเลย (mirror gemini)
+  b.textContent = micOn ? "⏹ หยุด" : "🎤 เริ่มฟัง";
+  $("stopBtn").textContent="✂️ ส่งเลย";   // ส่ง finalText ที่ฟังได้ทันที (ไม่รอเงียบ) แล้วฟังต่อ
+  $("stopBtn").style.display = micOn ? "" : "none";
 }
 
 // ── Screen share ──
@@ -154,20 +154,20 @@ function buildRec(){
   return r;
 }
 function startRec(){ if(!rec) rec=buildRec(); if(!rec){ $("supportWarn").style.display="flex"; return; } rec.lang=lang; try{rec.start();}catch{} }
-function startListen(){ showError(""); finalText=""; $("input").value=""; micOn=true; paused=false; stopped=false; startRec(); setMicUI(); refreshStatus(); }
-function pauseListen(){ micOn=false; paused=true; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} setMicUI(); refreshStatus(); }  // เก็บ finalText + preview ไว้ resume ต่อ
-function resumeListen(){ showError(""); micOn=true; paused=false; startRec(); setMicUI(); refreshStatus(); }
+// toggle เริ่ม/หยุด (เหมือน gemini): หยุด=หยุด recognizer เฉยๆ (เก็บ finalText+preview, ไม่ lock); เริ่ม=ฟังต่อ/สะสม buffer
+function startWebListen(){ showError(""); micOn=true; stopped=false; startRec(); setMicUI(); refreshStatus(); }
+function stopWebListen(){ micOn=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} setMicUI(); refreshStatus(); }
 // ล็อก/ปลดล็อก composer (stop → session view ได้อย่างเดียว)
 function lockComposer(lock){ $("composer").style.display = lock?"none":""; $("roNote").style.display = lock?"block":"none"; }
 // reset → กลับ idle (ปุ่ม+composer กลับมา) ใช้ตอนเริ่ม session ใหม่
 function resetListen(){
-  micOn=false; paused=false; stopped=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{}
+  micOn=false; stopped=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{}
   if(recOn){ recOn=false; hybridRec=false; try{mediaRec&&mediaRec.state!=="inactive"&&mediaRec.stop();}catch{} try{audioStream&&audioStream.getTracks().forEach(t=>t.stop());}catch{} hybridQ=[]; }
   finalText=""; clearVoicePreview(); lockComposer(false); setMicUI(); refreshStatus();
 }
 // จบ — ล้างทิ้ง + ปิดแชร์จอ + ล็อก composer (session นี้ view ได้อย่างเดียว, resume ไม่ได้)
 function stopListen(){
-  micOn=false; paused=false; stopped=true; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{}
+  micOn=false; stopped=true; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{}
   finalText=""; clearVoicePreview();
   if(screenOn){ screenStream&&screenStream.getTracks().forEach(t=>t.stop()); screenStream=null; video.srcObject=null; screenOn=false; $("screenBtn").classList.remove("on"); $("screenBtn").textContent="🖥 แชร์จอ"; }
   if(curSess){ curSess.stopped=true; persistSess(curSess); }   // persist → reload ยัง view-only
@@ -175,9 +175,9 @@ function stopListen(){
 }
 $("micBtn").onclick=()=>{
   if(sttEngine==="gemini") return toggleGeminiRecord();   // สด+AI auto-cut
-  if(micOn) pauseListen(); else if(paused) resumeListen(); else startListen();
+  micOn ? stopWebListen() : startWebListen();             // web: toggle เริ่ม/หยุด
 };
-$("stopBtn").onclick=()=>{ if(sttEngine==="gemini" && recOn) cutHybridClip(); else stopListen(); };   // gemini: ตัด+ส่งเลย (ฟังต่อ); web: จบ session
+$("stopBtn").onclick=()=>{ if(sttEngine==="gemini" && recOn) cutHybridClip(); else if(micOn) voiceSend(); };   // ✂️ ส่งเลย: gemini=ตัดคลิป; web=ส่ง finalText (ทั้งคู่ฟังต่อ)
 
 // ── สด+AI (gemini mode): auto-cut ต่อเนื่อง — กดเริ่มครั้งเดียว พูดเรื่อยๆ, Web Speech เป็น VAD,
 //    เงียบ → ตัดคลิป → Gemini ถอด → ส่ง → ฟังต่อ (hands-free + แม่น). กดอีกครั้ง = หยุด

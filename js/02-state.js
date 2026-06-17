@@ -55,7 +55,7 @@ let provider = store.get("ma_provider") || "gemini";
 let mode = "qa";
 let lang = "th-TH";
 let autoSend = true;
-let micOn = false, screenOn = false, paused = false, stopped = false;  // paused = พัก (resume ได้); stopped = จบการฟัง session นี้ (ซ่อนปุ่ม mic/screen)
+let micOn = false, screenOn = false, stopped = false;  // stopped = session เก่าที่ถูกล็อก view-only (backward-compat; web flow ใหม่ไม่สร้าง)
 let voiceWrapEl = null, voiceLiveEl = null;  // qa/est: โชว์เสียงที่ถอดเป็น bubble สดในแชท (ไม่ลง textarea)
 let busy = false;
 let silenceMs = +store.get("ma_silence") || 1800;  // auto-send delay after silence (ปรับได้, default ถามสด)
