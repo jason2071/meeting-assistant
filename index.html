@@ -62,6 +62,14 @@
             <input id="stackCtx" style="width:100%" placeholder="เช่น Go, TypeScript, PHP, Python, Rust, HTML — เว้นว่าง = ตอบทุกภาษาตามคำถาม" />
           </div>
           <div class="row" style="gap:8px;flex-wrap:wrap">
+            <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">🎙 ถอดเสียง</div>
+            <div class="seg" id="sttSeg">
+              <button id="sttWeb" class="on" title="Web Speech — สด ทีละคำ (ฟรี)">สด</button>
+              <button id="sttGemini" title="Gemini — กดเริ่ม/กดจบ ถอดทั้งคลิป แม่นกว่า (ใช้ Gemini key)">AI แม่นกว่า</button>
+            </div>
+            <span id="sttHint" class="mono" style="font-size:11px;color:var(--muted)">สด = ทีละคำ · AI = กดอัด→ถอด (Gemini)</span>
+          </div>
+          <div class="row" style="gap:8px;flex-wrap:wrap">
             <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">⚡ ส่งเมื่อเงียบ</div>
             <input id="silenceSec" type="number" min="0.5" max="6" step="0.1" style="width:84px" />
             <span class="mono" style="font-size:11px;color:var(--muted)">วินาที (default 1.8s)</span>

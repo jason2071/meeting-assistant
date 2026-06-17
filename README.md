@@ -9,6 +9,7 @@
 - **🧠 ถาม AI** — ตอบสดแบบ stream token-by-token
 - **📊 ประเมินงาน** — ป้อนงาน → ได้ผลเป็น JSON (สรุป, stack, เวลารวม, breakdown, ความเสี่ยง)
 - **✨ แก้คำถอดเสียง (option)** — toggle ใน header; เปิดแล้วเสียงที่ถอดจะถูก LLM แก้คำเพี้ยน/ศัพท์เทคนิคก่อนส่ง (ไทยปนอังกฤษแม่นขึ้น) — เพิ่ม 1 LLM call, default ปิด
+- **🎙 ถอดเสียง: สด / AI** — toggle ในตั้งค่า. **สด** = Web Speech (live ทีละคำ ฟรี). **AI แม่นกว่า** = กดเริ่มอัด→กดจบ→ Gemini ถอดทั้งคลิป (ไทยปนศัพท์ dev แม่นกว่า, ใช้ Gemini key, ไม่ live)
 - **Multi-provider** — OpenRouter, Google Gemini, OpenAI (GPT), Anthropic (Claude) — ทุกตัว vision-capable
 - **Session history** — บันทึกแต่ละ session อัตโนมัติ (localStorage) เปิดดูย้อนหลังได้
 - **Custom font size** — slider ในตั้งค่า ⚙ ปรับขนาดฟอนต์คำตอบ

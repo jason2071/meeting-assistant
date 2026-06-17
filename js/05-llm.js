@@ -67,3 +67,35 @@ async function streamLLM(req, onToken){
   }
   return full;
 }
+
+// ── Gemini audio STT (batch) — decode recorded blob → mono WAV → Gemini transcribe ──
+async function blobToWav(blob){
+  const ab=await blob.arrayBuffer();
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const buf=await ctx.decodeAudioData(ab); ctx.close();
+  const ch=buf.numberOfChannels, len=buf.length, sr=buf.sampleRate;
+  const data=new Float32Array(len);
+  for(let c=0;c<ch;c++){ const d=buf.getChannelData(c); for(let i=0;i<len;i++) data[i]+=d[i]/ch; }  // mono mixdown
+  const out=new ArrayBuffer(44+len*2), v=new DataView(out);
+  const ws=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
+  ws(0,"RIFF"); v.setUint32(4,36+len*2,true); ws(8,"WAVE"); ws(12,"fmt "); v.setUint32(16,16,true);
+  v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,sr,true); v.setUint32(28,sr*2,true);
+  v.setUint16(32,2,true); v.setUint16(34,16,true); ws(36,"data"); v.setUint32(40,len*2,true);
+  let o=44; for(let i=0;i<len;i++){ let s=Math.max(-1,Math.min(1,data[i])); v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true); o+=2; }
+  return new Blob([out],{type:"audio/wav"});
+}
+async function transcribeAudioGemini(blob){
+  const key=getKey("gemini");
+  if(!key) throw new Error("ต้องมี Gemini API key — เลือก provider Gemini แล้วใส่ key");
+  const wav=await blobToWav(blob);
+  const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onloadend=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(wav); });
+  const model=(provider==="gemini" ? modelInp.value.trim() : "") || "gemini-3-flash-preview";
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+  const body={ contents:[{role:"user",parts:[
+    {text:"ถอดเสียงนี้เป็นข้อความแบบ verbatim ภาษาไทยผสมศัพท์เทคนิคอังกฤษ ตอบกลับเฉพาะข้อความที่ถอดได้ล้วนๆ ไม่ต้องอธิบาย ไม่ต้องใส่ timestamp"},
+    {inline_data:{mime_type:"audio/wav",data:b64}}]}], generationConfig:{maxOutputTokens:1024} };
+  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,200)); }
+  const j=await res.json();
+  return (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("").trim();
+}
