@@ -72,11 +72,20 @@
   .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px; margin-top:14px; }
   .q { font-size:13px; color:var(--muted); margin-bottom:12px; padding-bottom:12px;
     border-bottom:1px solid var(--border); font-weight:500; display:flex; align-items:center; gap:8px; }
-  .ans { font-size:var(--fs); line-height:1.7; color:var(--text); }
-  .ans p { margin:8px 0; }
-  .ans h4 { font-size:14px; font-weight:700; color:var(--text); margin:14px 0 6px; }
-  .ans ul, .ans ol { margin:8px 0; padding-left:20px; }
-  .ans li { margin:4px 0; }
+  .ans { font-size:var(--fs); line-height:1.75; color:var(--text); }
+  .ans p { margin:9px 0; }
+  .ans h4 { font-size:13px; font-weight:700; color:var(--teal); margin:16px 0 7px;
+    letter-spacing:.2px; text-transform:none; }
+  .ans h4:first-child { margin-top:0; }
+  .ans ul, .ans ol { margin:9px 0; padding-left:22px; }
+  .ans li { margin:5px 0; padding-left:2px; }
+  .ans li::marker { color:var(--muted); }
+  .ans .tablewrap { overflow-x:auto; margin:10px 0; border:1px solid var(--border); border-radius:8px; }
+  .ans table { border-collapse:collapse; width:100%; font-size:13px; }
+  .ans th, .ans td { text-align:left; padding:7px 11px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .ans th { background:var(--panel2); color:var(--text); font-weight:700; white-space:nowrap; }
+  .ans tr:last-child td { border-bottom:none; }
+  .ans td code { white-space:nowrap; }
   .ans strong { color:#fff; font-weight:700; }
   .ans code { font-family:ui-monospace,Menlo,monospace; font-size:12.5px; color:var(--teal);
     background:var(--panel2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; }
@@ -372,11 +381,13 @@ const PROVIDERS = {
 };
 
 const QA_SYSTEM =
-  "คุณเป็นผู้ช่วยในที่ประชุมทีม dev ตอบ**สั้นกระชับ** เอาแกนคำตอบหลักมาก่อนพอ — ปกติ 2-5 บรรทัดหรือ bullet สั้นๆ " +
-  "อย่าแตกทุกหัวข้อ (เช่น considerations/architecture/database/trade-off ทุกมุม) เว้นแต่ถูกถามเจาะจง " +
-  "ถ้ามีรายละเอียด/แง่มุมเพิ่มเติม ให้ทิ้งท้ายสั้นๆ ว่าถามต่อได้ (เช่น 'อยากให้ลงลึกเรื่องไหนบอกได้') แล้วค่อยขยายเมื่อผู้ใช้ถามเพิ่ม " +
-  "ใช้ภาษาไทยผสม technical term อังกฤษ ครอบคลุมหลายภาษา/stack (Go, JavaScript, TypeScript, PHP, Python, Rust, HTML/CSS, SQL ฯลฯ) — ตอบตามภาษาที่คำถามเกี่ยวข้อง ใช้ idiom ของภาษานั้น " +
-  "ถ้ามีภาพหน้าจอแนบมาให้ดูประกอบ (อ่าน error, code, diagram, ตาราง).";
+  "คุณเป็นผู้ช่วยในที่ประชุมทีม dev ตอบ**สั้นที่สุดที่ตอบโจทย์** — รวมทั้งคำตอบไม่เกินประมาณ 6 บรรทัด " +
+  "ตอบเป็นย่อหน้าสั้น หรือ bullet ไม่เกิน 4-5 ข้อ ข้อละ 1 บรรทัด. " +
+  "ห้ามใส่หัวข้อ (heading) หลายหัวข้อ ห้ามแตกเป็น section (considerations/architecture/database/trade-off/summary) เว้นแต่ผู้ใช้ถามเจาะส่วนนั้นตรงๆ. " +
+  "ถ้าคำถามกว้าง ให้ตอบแกนหลักสั้นๆ แล้วปิดท้ายด้วยบรรทัดเดียวถามกลับว่าให้เจาะส่วนไหนต่อ — อย่าลงรายละเอียดทุกมุมเอง. " +
+  "โค้ดให้เฉพาะ snippet สั้นที่จำเป็น ไม่ต้องตัวอย่างเต็ม. " +
+  "ใช้ภาษาไทยผสม technical term อังกฤษ ครอบคลุมหลายภาษา/stack (Go, JS, TS, PHP, Python, Rust, HTML/CSS, SQL ฯลฯ) ตอบตามภาษาที่คำถามเกี่ยว. " +
+  "ถ้ามีภาพหน้าจอแนบมาให้ดูประกอบ.";
 
 const EST_SYSTEM =
   "คุณเป็น senior tech lead ช่วยประเมินงาน dev ในที่ประชุม แนะนำ stack ตามที่เหมาะกับงานจริง " +
@@ -821,25 +832,37 @@ function highlightCode(code){
   });
 }
 // minimal markdown → HTML for streamed answers (escape first, then format). No deps.
+function inline(s){ return s.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/`([^`]+)`/g,"<code>$1</code>"); }
 function mdToHtml(src){
-  const blocks=[];
-  let s = esc(src).replace(/```(\w+)?\n?([\s\S]*?)```/g,(m,lang,c)=>{ blocks.push({code:c.replace(/\n$/,""),lang:lang||""}); return ` ${blocks.length-1} `; });
-  // fence ที่ยังไม่ปิด (กำลัง stream / คำตอบถูกตัด) → render ส่วนที่เหลือเป็น code block เลย ไม่โชว์ ``` ดิบ
-  s = s.replace(/```(\w+)?\n?([\s\S]*)$/,(m,lang,c)=>{ blocks.push({code:c.replace(/\n$/,""),lang:lang||""}); return `\0${blocks.length-1}\0`; });
-  const lines=s.split("\n"); let html="", list=null;
+  const blocks=[]; const Z=String.fromCharCode(0);   // NUL placeholder delimiter (trim ไม่ลบ ไม่ชนข้อความปกติ)
+  const stash=(c,lang)=>{ blocks.push({code:c.replace(/\n$/,""),lang:lang||""}); return Z+(blocks.length-1)+Z; };
+  let s = esc(src)
+    .replace(/```(\w+)?\n?([\s\S]*?)```/g,(m,lang,c)=>stash(c,lang))
+    .replace(/```(\w+)?\n?([\s\S]*)$/,(m,lang,c)=>stash(c,lang));   // fence ไม่ปิด (stream/ตัด) -> render ส่วนที่เหลือเป็น code
+  const lines=s.split("\n"); let html="", list=null, tbl=[];
   const close=()=>{ if(list){ html+=`</${list}>`; list=null; } };
+  const cells=r=>r.replace(/^\s*\|/,"").replace(/\|\s*$/,"").split("|").map(c=>inline(c.trim()));
+  const flushTbl=()=>{
+    if(!tbl.length) return; const rows=tbl; tbl=[];
+    if(rows.length>=2 && /^[\s|:\-]+$/.test(rows[1]) && rows[1].includes("-")){   // header + separator -> ตาราง
+      close();
+      const head=cells(rows[0]), body=rows.slice(2).map(cells);
+      html+=`<div class="tablewrap"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${body.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    } else { close(); rows.forEach(r=>{ if(r.trim()) html+=`<p>${inline(r)}</p>`; }); }   // ไม่ใช่ตารางจริง -> paragraph
+  };
   for(let line of lines){
-    const fence=line.trim().match(/^ (\d+) $/);
-    if(fence){ close(); const b=blocks[+fence[1]]; html+=`<div class="codeblock"><div class="codebar"><span>${b.lang||"code"}</span><button class="codecopy" type="button">copy</button></div><pre><code>${highlightCode(b.code)}</code></pre></div>`; continue; }
-    line=line.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/`([^`]+)`/g,"<code>$1</code>");
+    const fence=line.trim().match(new RegExp("^"+Z+"(\\d+)"+Z+"$"));
+    if(fence){ flushTbl(); close(); const b=blocks[+fence[1]]; html+=`<div class="codeblock"><div class="codebar"><span>${b.lang||"code"}</span><button class="codecopy" type="button">copy</button></div><pre><code>${highlightCode(b.code)}</code></pre></div>`; continue; }
+    if(/^\s*\|.*\|\s*$/.test(line)){ tbl.push(line); continue; }   // เก็บแถวตาราง
+    flushTbl();
     let m;
-    if(m=line.match(/^\s*#{1,6}\s+(.*)$/)){ close(); html+=`<h4>${m[1]}</h4>`; }
-    else if(m=line.match(/^\s*[-*]\s+(.*)$/)){ if(list!=="ul"){close();html+="<ul>";list="ul";} html+=`<li>${m[1]}</li>`; }
-    else if(m=line.match(/^\s*\d+[.)]\s+(.*)$/)){ if(list!=="ol"){close();html+="<ol>";list="ol";} html+=`<li>${m[1]}</li>`; }
-    else if(line.trim()){ close(); html+=`<p>${line}</p>`; }
+    if(m=line.match(/^\s*#{1,6}\s+(.*)$/)){ close(); html+=`<h4>${inline(m[1])}</h4>`; }
+    else if(m=line.match(/^\s*[-*]\s+(.*)$/)){ if(list!=="ul"){close();html+="<ul>";list="ul";} html+=`<li>${inline(m[1])}</li>`; }
+    else if(m=line.match(/^\s*\d+[.)]\s+(.*)$/)){ if(list!=="ol"){close();html+="<ol>";list="ol";} html+=`<li>${inline(m[1])}</li>`; }
+    else if(line.trim()){ close(); html+=`<p>${inline(line)}</p>`; }
     else close();
   }
-  close();
+  flushTbl(); close();
   return html;
 }
 
@@ -965,7 +988,7 @@ async function submit(override){
   if(mode==="qa"){
     const ans=el("div","ans","▍"); addAiMsg().appendChild(ans);
     try{
-      const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:2048});
+      const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:900});
       const full=await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); scrollBottom(); });
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
       if(full && full.trim()) saveItem({q, mode:"qa", hadImage:!!image, raw:full});
