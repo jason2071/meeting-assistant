@@ -54,7 +54,12 @@
   .mic { display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:10px;
     border:none; background:var(--teal); color:#06231F; font-weight:700; font-size:14px; }
   .mic.on { background:var(--red); color:#fff; }
+  .mic.paused { background:var(--amber); color:#3a2a00; }
   .mic:focus-visible { outline:2px solid var(--text); outline-offset:2px; }
+  .pill.stopbtn { border-color:var(--red); color:var(--red); font-weight:700; }
+  .pill.stopbtn:hover { background:rgba(240,114,107,.12); }
+  .ro-note { flex:none; text-align:center; padding:14px 16px; font-size:12px; color:var(--muted);
+    border-top:1px solid var(--border); background:var(--panel); }
   .send { margin-left:auto; display:flex; align-items:center; gap:6px; background:var(--panel2);
     color:var(--muted); border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; }
   .send.ready { background:var(--teal); color:#06231F; }
@@ -127,6 +132,23 @@
   .mode-card .mc-d { font-size:11px; color:var(--muted); }
   .mode-badge { font-size:11px; font-weight:700; color:var(--teal); background:rgba(45,212,191,.1);
     border:1px solid var(--border); border-radius:6px; padding:3px 8px; white-space:nowrap; }
+  /* sys-audio setup helper (BlackHole) */
+  .sysaudio { background:var(--panel); border:1px solid var(--border); border-radius:12px; margin-bottom:14px; }
+  .sysaudio > summary { cursor:pointer; list-style:none; padding:12px 14px; font-size:13px; font-weight:600;
+    color:var(--text); user-select:none; }
+  .sysaudio > summary::-webkit-details-marker { display:none; }
+  .sysaudio > summary::before { content:"▸ "; color:var(--muted); }
+  .sysaudio[open] > summary::before { content:"▾ "; color:var(--muted); }
+  .sysaudio-body { padding:0 14px 14px; font-size:13px; line-height:1.6; color:var(--text); }
+  .sysaudio-body p { margin:6px 0; }
+  .sysaudio-body ol { margin:8px 0; padding-left:20px; }
+  .sysaudio-body li { margin:5px 0; }
+  .sysaudio-body code { font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--teal);
+    background:var(--panel2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; }
+  #sysAudioResult { margin-top:10px; font-size:12px; line-height:1.6; }
+  #sysAudioResult .ok { color:var(--teal); } #sysAudioResult .warn2 { color:var(--amber); }
+  #sysAudioResult ul { margin:6px 0 0; padding-left:18px; color:var(--muted); font-family:ui-monospace,Menlo,monospace; font-size:11.5px; }
+  #sysAudioResult .hit { color:var(--teal); font-weight:700; }
   /* ── views (no sidebar/navbar — minimal inline nav in header) ── */
   .newbtn { background:var(--teal); color:#06231F; border:none; border-radius:8px;
     padding:6px 12px; font-size:13px; font-weight:700; }
@@ -196,7 +218,7 @@
     <div id="viewHome" style="display:none">
       <div class="wrap">
         <h2 class="bg-gradient-to-r from-teal to-emerald-300 bg-clip-text text-transparent text-3xl font-extrabold" style="margin:0 0 4px">Meeting Assistant</h2>
-        <p style="color:var(--muted);font-size:14px;margin:0 0 18px">ตั้งค่า provider/model แล้วกดเริ่มแชท</p>
+        <p style="color:var(--muted);font-size:14px;margin:0 0 18px">เลือก model · ใส่ key · กดเริ่ม</p>
 
         <!-- Settings -->
         <div id="settings" class="bar" style="flex-direction:column;align-items:stretch;gap:10px;margin-bottom:14px">
@@ -227,10 +249,14 @@
             <div class="lbl" style="margin-bottom:6px">API KEY <span id="keyHint" style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)"></span></div>
             <input id="apikey" type="password" style="width:100%" placeholder="วาง API key ที่นี่" autocomplete="off" />
           </div>
+          <div>
+            <div class="lbl" style="margin-bottom:6px">STACK / บริบทผู้ถาม <span style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)">· ว่างได้ (ไม่ pin = AI ตอบกลางๆ)</span></div>
+            <input id="stackCtx" style="width:100%" placeholder="เช่น Go, TypeScript, PHP, Python, Rust, HTML — เว้นว่าง = ตอบทุกภาษาตามคำถาม" />
+          </div>
           <div class="row" style="gap:8px;flex-wrap:wrap">
-            <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">⚡ ส่งอัตโนมัติหลังเงียบ</div>
+            <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">⚡ ส่งเมื่อเงียบ</div>
             <input id="silenceSec" type="number" min="0.5" max="6" step="0.1" style="width:84px" />
-            <span class="mono" style="font-size:11px;color:var(--muted)">วินาที · default 1.8 สำหรับถามสด</span>
+            <span class="mono" style="font-size:11px;color:var(--muted)">วินาที (default 1.8s)</span>
           </div>
           <div>
             <div class="lbl" style="margin-bottom:6px">ขนาดตัวอักษร (คำตอบ)</div>
@@ -240,21 +266,36 @@
             </div>
           </div>
           <div class="mono" style="font-size:11px;color:var(--muted)">
-            key เก็บใน sessionStorage ของ tab นี้เท่านั้น (ล้างเมื่อปิด tab) ไม่ส่งไปไหนนอกจาก provider ที่เลือก
+            API key เก็บเฉพาะ tab นี้ (ล้างอัตโนมัติเมื่อปิด) · ส่งตรงถึง provider เท่านั้น
           </div>
         </div>
 
+        <details class="sysaudio">
+          <summary>🎧 ฟังเสียงผู้ถามจากระบบ (BlackHole)</summary>
+          <div class="sysaudio-body">
+            <p>ให้แอปถอด <b>เสียงผู้ถาม</b> ที่ออกจาก Zoom/Meet (เสียงระบบ) แทนไมค์เรา — เสียงเรา (mic) จะไม่เข้า</p>
+            <ol>
+              <li>ติดตั้ง <b>BlackHole 2ch</b> (<code>brew install blackhole-2ch</code>)</li>
+              <li>สร้าง <b>Multi-Output Device</b> (Audio MIDI Setup) = BlackHole + ลำโพง/หูฟัง → ตั้งเป็น output ของเครื่อง (จะได้ยินเอง + ส่งเข้า BlackHole)</li>
+              <li>ตั้ง <b>Input ของ Chrome = BlackHole 2ch</b> (System Settings → Sound → Input หรือ 🔒 ข้าง URL) แล้ว <b>รีโหลดหน้า</b></li>
+            </ol>
+            <p class="mono" style="color:var(--muted)">อยากให้เสียงเราเข้าด้วย → ใช้ Aggregate Device (BlackHole + mic จริง). ขั้นตอนเต็มดูใน README</p>
+            <button id="checkAudioBtn" type="button" class="minibtn" style="padding:7px 12px;font-size:12px;font-weight:600">🔍 ตรวจอุปกรณ์เสียง</button>
+            <div id="sysAudioResult"></div>
+          </div>
+        </details>
+
         <div class="lbl" style="margin-bottom:8px">เลือกโหมด</div>
         <div id="homeModes" class="mode-grid" style="margin-bottom:14px">
-          <button type="button" class="mode-card on" data-mode="qa"><span class="mc-ic">🧠</span><span class="mc-t">ถาม AI</span><span class="mc-d">ตอบสด stream</span></button>
-          <button type="button" class="mode-card" data-mode="est"><span class="mc-ic">📊</span><span class="mc-t">ประเมินงาน</span><span class="mc-d">stack · เวลา · risk</span></button>
+          <button type="button" class="mode-card on" data-mode="qa"><span class="mc-ic">🧠</span><span class="mc-t">ถาม AI</span><span class="mc-d">ตอบสดทันที</span></button>
+          <button type="button" class="mode-card" data-mode="est"><span class="mc-ic">📊</span><span class="mc-t">ประเมินงาน</span><span class="mc-d">stack · เวลา · ความเสี่ยง</span></button>
         </div>
 
         <button id="startBtn" class="newbtn transition-all hover:brightness-110 active:scale-95 shadow-md shadow-teal/30"
-          style="width:100%;padding:12px;font-size:15px">▶ เริ่ม session ใหม่</button>
+          style="width:100%;padding:12px;font-size:15px">▶ เริ่มใหม่</button>
 
         <div style="margin-top:26px">
-          <div class="lbl" style="margin-bottom:8px">ประวัติ SESSION</div>
+          <div class="lbl" style="margin-bottom:8px">ประวัติ</div>
           <div id="homeList"></div>
         </div>
       </div>
@@ -279,8 +320,8 @@
           <button id="enBtn">Eng</button>
         </div>
         <button id="autoBtn" class="pill on" title="ส่งอัตโนมัติหลังเงียบ" style="padding:6px 9px">⚡</button>
-        <button id="correctBtn" class="pill" title="แก้คำถอดเสียงด้วย AI ก่อนส่ง (เพิ่ม 1 LLM call)" style="padding:6px 9px">✨</button>
-        <span id="count" class="mono" style="font-size:11px;color:var(--muted)">0 รายการ</span>
+        <button id="correctBtn" class="pill" title="แก้คำถอดเสียงด้วย AI ก่อนส่ง (เพิ่ม 1 LLM call)" aria-label="แก้คำถอดเสียงด้วย AI">✨ แก้คำ</button>
+        <span id="count" class="mono" style="font-size:11px;color:var(--muted)">0 คำถาม</span>
         <button id="clear" class="iconbtn" title="ล้างทั้งหมด" style="display:none;width:32px;height:32px">🗑</button>
       </header>
 
@@ -288,20 +329,22 @@
       <div id="empty" class="chat-empty"></div>
       <div id="error" class="warn" style="margin:0 16px"></div>
 
-      <div class="composer">
+      <div class="composer" id="composer">
         <!-- hot controls (ใช้บ่อยระหว่างประชุม): mode tabs + mic/screen — อยู่ติด input -->
         <div id="ctrl" class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">
           <button id="micBtn" class="mic">🎤 เริ่มฟัง</button>
+          <button id="stopBtn" class="pill stopbtn" style="display:none">⏹ จบ</button>
           <button id="screenBtn" class="pill">🖥 แชร์จอ</button>
           <div id="status" class="mono" style="width:100%;font-size:12px;color:var(--muted);display:none;align-items:center;gap:12px;flex-wrap:wrap"></div>
         </div>
-        <div id="supportWarn" class="warn" style="display:none">⚠ เบราว์เซอร์นี้ไม่รองรับการฟังเสียง — ใช้ Chrome/Edge หรือพิมพ์เอา</div>
+        <div id="supportWarn" class="warn" style="display:none">⚠ เบราว์เซอร์นี้ไม่รองรับ Speech Recognition — เปิดใน Chrome หรือ Edge</div>
         <div class="composer-input">
-          <textarea id="input" rows="2" placeholder="พิมพ์ หรือพูดคำถาม… (ถ้าแชร์จอ AI จะเห็นจอด้วย)"></textarea>
+          <textarea id="input" rows="2" placeholder="พิมพ์หรือพูดคำถาม…"></textarea>
           <button id="sendBtn" class="send" style="margin-left:0">➤</button>
         </div>
         <div class="mono" style="font-size:10.5px;color:var(--muted);margin-top:6px">⌘/Ctrl + Enter เพื่อส่ง</div>
       </div>
+      <div id="roNote" class="ro-note" style="display:none">⏹ จบ session แล้ว — ดูได้อย่างเดียว</div>
     </div>
 
   </main>
@@ -331,12 +374,11 @@ const PROVIDERS = {
 const QA_SYSTEM =
   "คุณเป็นผู้ช่วยในที่ประชุมทีม dev ตอบกระชับ ตรงประเด็น ใช้ภาษาไทยผสม technical term ภาษาอังกฤษ " +
   "ถ้าเป็นคำถามเทคนิคให้ตอบแบบ production-ready ไม่ต้องเกริ่นยาว ถ้ามี trade-off สำคัญให้บอกสั้นๆ " +
-  "ถ้ามีภาพหน้าจอแนบมาให้ดูประกอบ (อ่าน error, code, diagram, ตาราง) " +
-  "ผู้ถามเป็น backend dev สาย Go (Fiber v2), PostgreSQL, React/TypeScript, clean architecture.";
+  "ครอบคลุมหลายภาษา/stack (Go, JavaScript, TypeScript, PHP, Python, Rust, HTML/CSS, SQL ฯลฯ) — ตอบตามภาษาที่คำถามเกี่ยวข้อง ใช้ idiom ของภาษานั้น " +
+  "ถ้ามีภาพหน้าจอแนบมาให้ดูประกอบ (อ่าน error, code, diagram, ตาราง).";
 
 const EST_SYSTEM =
-  "คุณเป็น senior tech lead ช่วยประเมินงาน dev ในที่ประชุม default stack ทีมคือ Go (Fiber v2), " +
-  "PostgreSQL, React+Vite+TypeScript, clean architecture แต่ถ้างานเหมาะกับ stack อื่นให้แนะนำตามจริง " +
+  "คุณเป็น senior tech lead ช่วยประเมินงาน dev ในที่ประชุม แนะนำ stack ตามที่เหมาะกับงานจริง " +
   "ถ้ามีภาพหน้าจอแนบมาให้ใช้ประกอบ ตอบเป็น JSON เท่านั้น ห้ามมีข้อความอื่นหรือ markdown fence " +
   'รูปแบบ: {"summary":string,"stack":string[],"totalTime":string,' +
   '"breakdown":[{"task":string,"time":string}],"risks":string[]} ' +
@@ -347,6 +389,13 @@ const CORRECT_SYSTEM =
   "หน้าที่: แก้คำเพี้ยน/คำผิด/ศัพท์เทคนิคที่ถอดมาผิดให้ถูกต้อง (เช่น 'เทียร์'→'tier', 'เอ็กซ์แพนคอนแทรค'→'expand-contract', 'โพสเกรส'→'PostgreSQL') " +
   "คงความหมายและภาษาเดิมไว้ (ไทยยังเป็นไทย อังกฤษยังเป็นอังกฤษ) ห้ามเพิ่ม/ตัดเนื้อหา ห้ามสรุป ห้ามแปล ห้ามอธิบาย " +
   "ตอบกลับเฉพาะข้อความที่แก้แล้วล้วนๆ ไม่มี markdown fence ไม่มีคำนำ/คำลงท้าย";
+
+// stack/บริบท ตั้งค่าได้ (หน้าหลัก) — ต่อท้าย system prompt ของ qa/est; ว่าง = ไม่ pin ภาษา/stack ตอบกลางๆ ตามคำถาม
+function stackLine(){
+  const s=($("stackCtx").value||"").trim();
+  return s ? ` บริบท: ผู้ถาม/ทีมใช้ stack ${s} — แต่ถ้าคำถามเกี่ยวกับภาษา/stack อื่นให้ตอบตามนั้น`
+           : ` ไม่มีการ pin ภาษา/stack — ตอบตามภาษาที่คำถามเกี่ยวข้อง อย่าสมมติเทคโนโลยีเอง`;
+}
 
 // ── Storage helpers ──
 const store = {
@@ -373,7 +422,7 @@ let provider = store.get("ma_provider") || "gemini";
 let mode = "qa";
 let lang = "th-TH";
 let autoSend = true;
-let micOn = false, screenOn = false;
+let micOn = false, screenOn = false, paused = false, stopped = false;  // paused = พัก (resume ได้); stopped = จบการฟัง session นี้ (ซ่อนปุ่ม mic/screen)
 let voiceWrapEl = null, voiceLiveEl = null;  // qa/est: โชว์เสียงที่ถอดเป็น bubble สดในแชท (ไม่ลง textarea)
 let busy = false;
 let silenceMs = +store.get("ma_silence") || 1800;  // auto-send delay after silence (ปรับได้, default ถามสด)
@@ -468,7 +517,7 @@ function modelsReq(p, key){
 async function fetchModels(){
   const key = keyInp.value.trim();
   if(!key && provider!=="openrouter"){ showError("ใส่ API key ก่อน fetch model"); return; }
-  fetchBtn.disabled=true; fetchBtn.classList.add("spin"); modelStatus.textContent="กำลังโหลด…"; showError("");
+  fetchBtn.disabled=true; fetchBtn.classList.add("spin"); modelStatus.textContent="โหลด models…"; showError("");
   try{
     const req=modelsReq(provider,key);
     const res=await fetch(req.url,{ headers:req.headers });
@@ -489,7 +538,31 @@ fetchBtn.onclick = fetchModels;
 providerSel.onchange = ()=>loadProvider(providerSel.value);
 modelSel.onchange = ()=>{ modelInp.value=modelSel.value; store.set(modelKey(provider), modelSel.value); };
 keyInp.oninput = ()=>skey.set(keyKey(provider), keyInp.value.trim());
+// stack/บริบท (persist localStorage; default ว่าง = ไม่ pin ภาษา)
+$("stackCtx").value = store.get("ma_stack") || "";
+$("stackCtx").oninput = ()=>store.set("ma_stack", $("stackCtx").value.trim());
 loadProvider(provider);
+
+// ── ตรวจอุปกรณ์เสียง (ช่วยตั้ง BlackHole ให้ฟังเสียงผู้ถามจากระบบ) ──
+// หมายเหตุ: Web Speech เลือก device เองไม่ได้ — ตรวจได้แค่ว่ามี virtual device ติดตั้งไหม, ที่เหลือตั้งใน Chrome/OS
+async function checkAudioDevices(){
+  const box=$("sysAudioResult"); box.innerHTML=`<span style="color:var(--muted)">กำลังตรวจ…</span>`;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});  // ขอ permission เพื่ออ่านชื่อ device
+    stream.getTracks().forEach(t=>t.stop());
+    const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
+    const isVirtual=(l)=>/blackhole|aggregate|virtual|loopback|soundflower/i.test(l);
+    const found=devs.filter(d=>isVirtual(d.label));
+    const list=`<ul>${devs.map(d=>`<li class="${isVirtual(d.label)?"hit":""}">${esc(d.label||"(ไม่ทราบชื่อ)")}</li>`).join("")}</ul>`;
+    const head = found.length
+      ? `<span class="ok">✅ เจอ virtual device: ${esc(found.map(d=>d.label).join(", "))} — ตั้งเป็น <b>Input</b> ของ Chrome แล้วรีโหลด</span>`
+      : `<span class="warn2">⚠ ไม่พบ virtual audio device — ติดตั้ง BlackHole ก่อน (ดูขั้นตอนด้านบน)</span>`;
+    box.innerHTML = head + list + `<div class="mono" style="color:var(--muted);margin-top:6px">แอปบังคับ device ไม่ได้ — Web Speech ใช้ Input default ของ Chrome ต้องตั้งเอง</div>`;
+  }catch(e){
+    box.innerHTML=`<span class="warn2">⚠ ต้องอนุญาตไมค์เพื่อตรวจ device (${esc(e.name||e.message||"error")})</span>`;
+  }
+}
+$("checkAudioBtn").onclick=checkAudioDevices;
 
 // settings อยู่หน้าหลักแล้ว ไม่มีปุ่ม gear
 
@@ -504,11 +577,11 @@ $("homeModes").addEventListener("click",(e)=>{ const b=e.target.closest(".mode-c
 function setMode(m){
   mode=m;
   $("curMode").textContent = MODE_LABEL[m] || MODE_LABEL.qa;
-  $("micBtn").textContent = micOn ? "🛑 หยุดฟัง" : "🎤 เริ่มฟัง";
+  setMicUI();
   $("sendBtn").textContent = m==="qa" ? "➤ ถาม" : "➤ ประเมิน";
   $("input").placeholder = m==="qa"
-    ? "พิมพ์ หรือพูดคำถาม… (ถ้าแชร์จอ AI จะเห็นจอด้วย)"
-    : "อธิบายงานที่อยากให้ประเมิน stack และเวลา…";
+    ? "พิมพ์หรือพูดคำถาม…"
+    : "อธิบายงานสั้นๆ เพื่อประเมิน stack และเวลา";
 }
 
 // ── Toggles ──
@@ -528,12 +601,27 @@ function setLang(l){ lang=l; $("thBtn").classList.toggle("on",l==="th-TH"); $("e
 function showError(msg){ errBox.style.display=msg?"flex":"none"; errBox.textContent = msg?("⚠ "+msg):""; }
 function refreshStatus(){
   const parts=[];
-  if(micOn) parts.push('<span style="color:var(--red)">● กำลังฟัง…</span>');
-  if(screenOn) parts.push('<span style="color:var(--teal)">🖼 AI จะเห็นจอตอนถาม</span>');
+  if(micOn) parts.push('<span style="color:var(--red)">● กำลังฟัง</span>');
+  else if(paused) parts.push('<span style="color:var(--amber)">⏸ พักอยู่ — กด "ฟังต่อ" เพื่อฟังต่อ</span>');
+  else if(stopped) parts.push('<span style="color:var(--muted)">⏹ จบการฟังแล้ว — พิมพ์ต่อได้ หรือเริ่ม session ใหม่เพื่อฟังอีก</span>');
+  if(screenOn) parts.push('<span style="color:var(--teal)">🖼 AI เห็นจอด้วยทุกครั้งที่ถาม</span>');
   statusEl.innerHTML = parts.join("");
   statusEl.style.display = parts.length?"flex":"none";
-  $("ctrl").classList.toggle("active", micOn||screenOn);
+  $("ctrl").classList.toggle("active", micOn||screenOn||paused);
   dot.className = "dot"+(micOn?" live":"");
+}
+// ปุ่มฟัง: idle(🎤 เริ่มฟัง) → listening(⏸ พัก + ⏹ จบ) → paused(▶ ฟังต่อ + ⏹ จบ). จบ=resume ไม่ได้, พัก=resume ได้
+function setMicUI(){
+  // จบ (stopped) → ซ่อนปุ่ม mic + screen + stop ทั้งหมด (ฟังอีกต้องเริ่ม session ใหม่)
+  if(stopped){
+    $("micBtn").style.display="none"; $("stopBtn").style.display="none"; $("screenBtn").style.display="none";
+    return;
+  }
+  $("micBtn").style.display=""; $("screenBtn").style.display="";
+  const b=$("micBtn");
+  b.className = "mic" + (micOn?" on":"") + (paused?" paused":"");
+  b.textContent = micOn ? "⏸ พัก" : (paused ? "▶ ฟังต่อ" : "🎤 เริ่มฟัง");
+  $("stopBtn").style.display = (micOn||paused) ? "" : "none";
 }
 
 // ── Screen share ──
@@ -550,7 +638,7 @@ $("screenBtn").onclick=async()=>{
     video.srcObject = screenStream; await video.play();
     screenStream.getVideoTracks()[0].onended = ()=>{ screenStream=null; screenOn=false;
       $("screenBtn").classList.remove("on"); $("screenBtn").textContent="🖥 แชร์จอ"; refreshStatus(); };
-    screenOn=true; $("screenBtn").classList.add("on"); $("screenBtn").textContent="🖥 กำลังแชร์จอ";
+    screenOn=true; $("screenBtn").classList.add("on"); $("screenBtn").textContent="🖥 หยุดแชร์";
     showError(""); refreshStatus();
   }catch(e){ showError("เริ่มแชร์จอไม่สำเร็จ หรือถูกยกเลิก"); }
 };
@@ -582,15 +670,28 @@ function buildRec(){
       silenceTimer=setTimeout(voiceSend,silenceMs);
     }
   };
-  r.onerror=(e)=>{ if(e.error==="not-allowed") showError("ไม่ได้รับอนุญาตให้ใช้ไมค์ — เปิดสิทธิ์ใน browser ก่อน"); };
+  r.onerror=(e)=>{ if(e.error==="not-allowed") showError("ไมค์ถูกบล็อก — เปิดสิทธิ์ใน browser แล้วรีโหลด"); };
   r.onend=()=>{ if(micOn && !processing){ try{r.start();}catch{} } };
   return r;
 }
 function startRec(){ if(!rec) rec=buildRec(); if(!rec){ $("supportWarn").style.display="flex"; return; } rec.lang=lang; try{rec.start();}catch{} }
-$("micBtn").onclick=()=>{
-  if(micOn){ micOn=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} finalText=""; clearVoicePreview(); $("micBtn").className="mic"; $("micBtn").textContent="🎤 เริ่มฟัง"; refreshStatus(); }
-  else { showError(""); finalText=""; $("input").value=""; micOn=true; $("micBtn").className="mic on"; $("micBtn").textContent="🛑 หยุดฟัง"; startRec(); refreshStatus(); }
-};
+function startListen(){ showError(""); finalText=""; $("input").value=""; micOn=true; paused=false; stopped=false; startRec(); setMicUI(); refreshStatus(); }
+function pauseListen(){ micOn=false; paused=true; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} setMicUI(); refreshStatus(); }  // เก็บ finalText + preview ไว้ resume ต่อ
+function resumeListen(){ showError(""); micOn=true; paused=false; startRec(); setMicUI(); refreshStatus(); }
+// ล็อก/ปลดล็อก composer (stop → session view ได้อย่างเดียว)
+function lockComposer(lock){ $("composer").style.display = lock?"none":""; $("roNote").style.display = lock?"block":"none"; }
+// reset → กลับ idle (ปุ่ม+composer กลับมา) ใช้ตอนเริ่ม session ใหม่
+function resetListen(){ micOn=false; paused=false; stopped=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} finalText=""; clearVoicePreview(); lockComposer(false); setMicUI(); refreshStatus(); }
+// จบ — ล้างทิ้ง + ปิดแชร์จอ + ล็อก composer (session นี้ view ได้อย่างเดียว, resume ไม่ได้)
+function stopListen(){
+  micOn=false; paused=false; stopped=true; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{}
+  finalText=""; clearVoicePreview();
+  if(screenOn){ screenStream&&screenStream.getTracks().forEach(t=>t.stop()); screenStream=null; video.srcObject=null; screenOn=false; $("screenBtn").classList.remove("on"); $("screenBtn").textContent="🖥 แชร์จอ"; }
+  if(curSess){ curSess.stopped=true; persistSess(curSess); }   // persist → reload ยัง view-only
+  lockComposer(true); setMicUI(); refreshStatus();
+}
+$("micBtn").onclick=()=>{ if(micOn) pauseListen(); else if(paused) resumeListen(); else startListen(); };
+$("stopBtn").onclick=stopListen;
 
 async function voiceSend(){
   const text=finalText.trim();
@@ -677,12 +778,12 @@ async function streamLLM(req, onToken){
 // ── Rendering ──
 let items=0;
 function bumpCount(){
-  countEl.textContent=items+" รายการ";
+  countEl.textContent=items+" คำถาม";
   $("clear").style.display=items?"flex":"none";
   if(!items){
     const hasKey = !!(keyInp.value.trim() || getKey(provider));
     empty.textContent = hasKey
-      ? "พิมพ์ หรือพูดคำถามด้านล่างเพื่อเริ่มแชท"
+      ? "พิมพ์หรือพูดคำถามด้านล่างเพื่อเริ่ม"
       : "ยังไม่ได้ใส่ API key — กลับไปตั้งค่าที่หน้าหลัก";
     empty.style.display="block";
   } else {
@@ -722,6 +823,8 @@ function highlightCode(code){
 function mdToHtml(src){
   const blocks=[];
   let s = esc(src).replace(/```(\w+)?\n?([\s\S]*?)```/g,(m,lang,c)=>{ blocks.push({code:c.replace(/\n$/,""),lang:lang||""}); return ` ${blocks.length-1} `; });
+  // fence ที่ยังไม่ปิด (กำลัง stream / คำตอบถูกตัด) → render ส่วนที่เหลือเป็น code block เลย ไม่โชว์ ``` ดิบ
+  s = s.replace(/```(\w+)?\n?([\s\S]*)$/,(m,lang,c)=>{ blocks.push({code:c.replace(/\n$/,""),lang:lang||""}); return `\0${blocks.length-1}\0`; });
   const lines=s.split("\n"); let html="", list=null;
   const close=()=>{ if(list){ html+=`</${list}>`; list=null; } };
   for(let line of lines){
@@ -741,7 +844,7 @@ function mdToHtml(src){
 
 // ── chat bubbles ──
 // qa/est: ฝั่งพูด/ถาม = "คนถาม" (คนบอก detail งาน ไม่ใช่ฉัน/operator); AI ตอบ
-function roleLabel(who){ return el("div","role", who==="user"?"🗣 คนถาม":"🤖 AI"); }
+function roleLabel(who){ return el("div","role", who==="user"?"🗣 ผู้ถาม":"🤖 AI"); }
 function addUserMsg(q, hadImage){
   const m=el("div","msg user");
   m.appendChild(roleLabel("user"));
@@ -763,7 +866,7 @@ function updateVoicePreview(txt){
   if(!txt){ clearVoicePreview(); return; }
   if(!voiceWrapEl){
     voiceWrapEl=el("div","msg user voice-live");
-    voiceWrapEl.appendChild(el("div","role","🗣 คนถาม (กำลังพูด…)"));
+    voiceWrapEl.appendChild(el("div","role","🗣 ผู้ถาม (กำลังพูด…)"));
     voiceLiveEl=el("div","bubble"); voiceLiveEl.style.whiteSpace="pre-wrap";
     voiceWrapEl.appendChild(voiceLiveEl);
     results.appendChild(voiceWrapEl);
@@ -861,7 +964,7 @@ async function submit(override){
   if(mode==="qa"){
     const ans=el("div","ans","▍"); addAiMsg().appendChild(ans);
     try{
-      const req=buildRequest(provider,key,model,{system:QA_SYSTEM,text:q,image,json:false});
+      const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:2048});
       const full=await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); scrollBottom(); });
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
       if(full && full.trim()) saveItem({q, mode:"qa", hadImage:!!image, raw:full});
@@ -870,7 +973,7 @@ async function submit(override){
     const bubble=addAiMsg();
     const load=el("div","mono","กำลังประเมิน…"); load.style.color="var(--muted)"; bubble.appendChild(load);
     try{
-      const req=buildRequest(provider,key,model,{system:EST_SYSTEM,text:q,image,json:true});
+      const req=buildRequest(provider,key,model,{system:EST_SYSTEM+stackLine(),text:q,image,json:true});
       const raw=await streamLLM(req,null);
       const clean=raw.replace(/```json|```/g,"").trim();
       if(!clean || clean==="{") throw new Error("AI ตอบว่าง/ไม่เป็น JSON (อาจถูกตัดหรือ model ไม่รองรับ json mode) — ลองใหม่ หรือเปลี่ยน model");
@@ -902,6 +1005,7 @@ function ensureSession(){
 }
 function setCurTitle(t){ curTitleEl.textContent=t; curTitleEl.title=t; }
 function newSession(){
+  resetListen();  // reset การฟังเป็น idle (ปุ่มกลับมา) เมื่อเริ่ม session ใหม่
   curId=null; curSess=null; ensureSession();
   results.innerHTML=""; clearVoicePreview(); items=0; bumpCount();
   setCurTitle("Session ใหม่");
@@ -918,7 +1022,7 @@ function saveItem(item){
   renderSessions();
 }
 function deleteSession(id){
-  if(!confirm("ลบ session นี้? กู้คืนไม่ได้")) return;
+  if(!confirm("ลบ session นี้? ไม่สามารถกู้คืนได้")) return;
   store.remove("ma_sess_"+id);
   saveIndex(sessIndex().filter(x=>x.id!==id));
   if(id===curId){ curId=null; curSess=null; store.remove("ma_cur"); results.innerHTML=""; items=0; bumpCount(); setCurTitle("Session ใหม่"); }
@@ -932,7 +1036,7 @@ function renderSessions(){
         const md=s.mode || (loadSess(s.id)||{}).mode || "qa";   // fallback ให้ session เก่าที่ index ยังไม่มี mode
         return `<div class="home-card transition-all hover:-translate-y-0.5 hover:shadow-xl" data-id="${s.id}"><span class="m mode-badge">${esc(MODE_LABEL[md]||MODE_LABEL.qa)}</span><div class="t">${esc(s.title||"Session ใหม่")}</div><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}" aria-label="ลบ session ${esc(s.title||"Session ใหม่")}">✕</button></div>`;
       }).join("")
-    : `<div class="side-empty">ยังไม่มี session — กดเริ่มใหม่</div>`;
+    : `<div class="side-empty">ยังไม่มีประวัติ — กดเริ่มใหม่ด้านบน</div>`;
 }
 function showView(name){
   viewName=name;
@@ -946,7 +1050,7 @@ function openSession(id){
   if(id===curId){ showView("current"); return; }
   const s=loadSess(id); if(!s){ showView("home"); return; }
   oldViewId=id;
-  oldMetaEl.innerHTML=`<button class="back-btn" id="backToHome">← กลับ</button><h2>${esc(s.title||"Session")}</h2><div class="sub">${esc(MODE_LABEL[s.mode]||MODE_LABEL.qa)} · ${fmtDate(s.createdAt)} · ${esc(s.provider||"")} · ${esc(s.model||"")} · ${(s.items||[]).length} รายการ</div>`;
+  oldMetaEl.innerHTML=`<button class="back-btn" id="backToHome">← กลับ</button><h2>${esc(s.title||"Session")}</h2><div class="sub">${esc(MODE_LABEL[s.mode]||MODE_LABEL.qa)} · ${fmtDate(s.createdAt)} · ${esc(s.provider||"")} · ${esc(s.model||"")} · ${(s.items||[]).length} คำถาม</div>`;
   oldMetaEl.querySelector("#backToHome").onclick=()=>showView("home");
   renderSessionInto(resultsOld, s, false);
   showView("old");
@@ -975,6 +1079,7 @@ fontRange.oninput=()=>{ fontPx=+fontRange.value; applyFont(fontPx); store.set("m
     renderSessionInto(results, curSess);
     items=curSess.items.length; bumpCount();
     setCurTitle(curSess.title||"Session ใหม่");
+    if(curSess.stopped){ stopped=true; lockComposer(true); setMicUI(); }  // session ที่จบแล้ว → view-only
   } else { setMode("qa"); bumpCount(); }
   renderSessions();
   showView("home");   // หน้า setting = หน้าหลัก เป็น default

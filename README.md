@@ -45,6 +45,8 @@ python3 -m http.server 8000
 `SpeechRecognition` ฟังจาก **mic เท่านั้น** — เสียงคนอื่นในประชุม (ออกลำโพง/ผ่าน Zoom·Meet·Teams) ไม่เข้า mic. แก้ด้วยการ route เสียงระบบ → mic เสมือนด้วย [BlackHole](https://github.com/ExistentialAudio/BlackHole) (virtual audio driver ฟรี) แล้วแอปจะถอดเสียงประชุมเหมือนพูดเอง — ใช้ได้กับทุกแอป รวม Zoom native
 
 > วิธีนี้ไม่ต้องแก้ code — เป็น audio routing ระดับ OS
+>
+> 💡 ในแอปมี helper **"🎧 ฟังเสียงผู้ถามจากระบบ (BlackHole)"** บนหน้าหลัก — มีขั้นตอนย่อ + ปุ่ม **ตรวจอุปกรณ์เสียง** (เช็คว่ามี BlackHole/virtual device ติดตั้งไหม). ตั้ง input เสร็จ → กด 🎤 แอปถอดเสียงผู้ถาม → AI ตอบ (โหมดถาม AI, auto-send เมื่อเงียบ)
 
 **1. ติดตั้ง BlackHole 2ch**
 ```bash
