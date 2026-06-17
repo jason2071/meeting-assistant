@@ -6,6 +6,7 @@ let items=0;
 function bumpCount(){
   countEl.textContent=items+" คำถาม";
   $("clear").style.display=items?"flex":"none";
+  updateTokTotal();   // อัปเดต token รวม session (def js/07)
   if(!items){
     const hasKey = !!(keyInp.value.trim() || getKey(provider));
     if(hasKey){
@@ -133,9 +134,14 @@ function renderSessionInto(container, sess){
     const b=el("div","bubble"); m.appendChild(b);
     if(it.mode==="est"){ try{ renderEstimate(b, JSON.parse(it.raw)); }catch{ b.appendChild(el("div","ans",esc(it.raw))); } }
     else b.appendChild(el("div","ans",mdToHtml(it.raw||"")));
+    if(it.tok) b.appendChild(tokBadge(it.tok));   // token ต่อคำตอบ
     container.appendChild(m);
   });
 }
+// token badge ใต้คำตอบ AI
+function fmtTok(n){ n=n||0; return n>=1000 ? (n/1000).toFixed(1).replace(/\.0$/,"")+"k" : String(n); }
+function fmtCost(c){ c=c||0; return "$"+(c>=0.01 ? c.toFixed(2) : c.toFixed(4)); }
+function tokBadge(u){ let s=`↑ ${fmtTok(u&&u.in)} · ↓ ${fmtTok(u&&u.out)}`; if(u&&u.cost!=null) s+=` · ${fmtCost(u.cost)}`; return el("div","tok",s); }
 
 function renderEstimate(card, e){
   const body=el("div");

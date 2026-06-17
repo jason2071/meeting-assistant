@@ -69,6 +69,7 @@
   .ans tr:last-child td { border-bottom:none; }
   .ans td code { white-space:nowrap; }
   .ans strong { color:#fff; font-weight:700; }
+  .tok { font-family:ui-monospace,Menlo,monospace; font-size:10px; color:var(--muted); margin-top:7px; opacity:.75; }
   .ans code { font-family:ui-monospace,Menlo,monospace; font-size:12.5px; color:var(--teal);
     background:var(--panel2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; }
   .ans pre { background:var(--panel2); border:1px solid var(--border); border-radius:8px;

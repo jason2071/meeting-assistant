@@ -17,12 +17,12 @@ async function submit(override){
   addUserMsg(q, !!image);
 
   if(mode==="qa"){
-    const ans=el("div","ans","▍"); addAiMsg().appendChild(ans);
+    const aiBubble=addAiMsg(); const ans=el("div","ans","▍"); aiBubble.appendChild(ans);
     try{
       const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:900});
       const full=await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); scrollBottom(); });
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
-      if(full && full.trim()) saveItem({q, mode:"qa", hadImage:!!image, raw:full});
+      if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}); }
     }catch(e){ ans.textContent=""; ans.appendChild(el("span","warn","⚠ "+esc(e.message))); }
   } else {
     const bubble=addAiMsg();
@@ -33,8 +33,8 @@ async function submit(override){
       const clean=raw.replace(/```json|```/g,"").trim();
       if(!clean || clean==="{") throw new Error("AI ตอบว่าง/ไม่เป็น JSON (อาจถูกตัดหรือ model ไม่รองรับ json mode) — ลองใหม่ หรือเปลี่ยน model");
       const est=looseJSON(clean);
-      load.remove(); renderEstimate(bubble,est); scrollBottom();
-      saveItem({q, mode:"est", hadImage:!!image, raw:JSON.stringify(est)});
+      load.remove(); renderEstimate(bubble,est); const tok=addCost(req.usageAcc); bubble.appendChild(tokBadge(tok)); scrollBottom();
+      saveItem({q, mode:"est", hadImage:!!image, raw:JSON.stringify(est), tok});
     }catch(e){ load.textContent=""; load.appendChild(el("span","warn","⚠ "+esc(e.message))); }
   }
   busy=false; scrollBottom();
@@ -63,6 +63,17 @@ function ensureSession(){
   store.set("ma_cur", curId);
 }
 function setCurTitle(t){ curTitleEl.textContent=t; curTitleEl.title=t; }
+// แนบ cost ($) ลง usage — เฉพาะ OpenRouter ที่มี pricing จริง (provider อื่น = token อย่างเดียว)
+function addCost(tok){
+  tok=tok||{}; if(provider==="openrouter"){ const p=modelPrice(); if(p) tok.cost=(tok.in||0)*p.pin+(tok.out||0)*p.pout; }
+  return tok;
+}
+// token (+cost ถ้ามี) รวมของ current session โชว์ใน header
+function updateTokTotal(){
+  let i=0,o=0,c=0,hasC=false;
+  ((curSess&&curSess.items)||[]).forEach(it=>{ if(it.tok){ i+=it.tok.in||0; o+=it.tok.out||0; if(it.tok.cost!=null){ c+=it.tok.cost; hasC=true; } } });
+  $("tok").textContent = (i||o) ? `· ↑${fmtTok(i)} ↓${fmtTok(o)}`+(hasC?` · ${fmtCost(c)}`:"") : "";
+}
 function newSession(){
   resetListen();  // reset การฟังเป็น idle (ปุ่มกลับมา) เมื่อเริ่ม session ใหม่
   curId=null; curSess=null; ensureSession();
@@ -76,7 +87,7 @@ function saveItem(item){
   curSess.updatedAt=Date.now(); curSess.provider=provider; curSess.model=modelInp.value; curSess.mode=mode;
   if(!curSess.title){ curSess.title=(item.q||"").slice(0,48); setCurTitle(curSess.title); }
   persistSess(curSess);
-  renderSessions();
+  updateTokTotal(); renderSessions();
 }
 function deleteSession(id){
   if(!confirm("ลบ session นี้? ไม่สามารถกู้คืนได้")) return;

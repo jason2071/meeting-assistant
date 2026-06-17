@@ -15,6 +15,7 @@
 - **Multi-provider** — OpenRouter, Google Gemini, OpenAI (GPT), Anthropic (Claude) — ทุกตัว vision-capable
 - **Session history** — บันทึกแต่ละ session อัตโนมัติใน **IndexedDB** (quota ใหญ่ ไม่ชน localStorage ~5MB; ของเก่าใน localStorage ย้ายเข้าให้อัตโนมัติ) เปิดดูย้อนหลังได้
 - **Custom font size** — slider ในตั้งค่า ⚙ ปรับขนาดฟอนต์คำตอบ
+- **🔢 Token usage + cost** — โชว์ token ต่อคำตอบ (badge ใต้ bubble: ↑in ↓out) + รวมทั้ง session ใน header. **OpenRouter** โชว์ค่าใช้จ่าย **$ จริง** ด้วย (จาก pricing ของ model); provider อื่นโชว์แค่ token (API ไม่บอกราคาราย model)
 
 ## Layout
 

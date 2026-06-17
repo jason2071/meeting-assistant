@@ -78,6 +78,8 @@ function modelStatusText(items){
 // current normalized model list + "free only" toggle (re-filters without refetching)
 // modelInp (hidden) holds the canonical selected id; modelSel is the picker.
 let modelsList=[], freeOnly=false;
+// ราคา $/token ของ model ปัจจุบัน (เฉพาะ OpenRouter ที่มี pricing จริง) → null ถ้าไม่รู้ราคา
+function modelPrice(){ const m=modelsList.find(x=>x.id===modelInp.value); return (m&&(m.pin||m.pout)) ? {pin:m.pin,pout:m.pout} : null; }
 function renderModelOptions(){
   const items = freeOnly ? modelsList.filter(m=>m.free) : modelsList;
   modelSel.innerHTML = items.map(m=>`<option value="${m.id}">${m.id}${m.free?" · free":""}</option>`).join("");

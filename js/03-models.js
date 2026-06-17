@@ -31,8 +31,10 @@ function modelsReq(p, key){
   return {
     url:"https://openrouter.ai/api/v1/models",
     headers:{},
+    // pin/pout = ราคา $/token จริงจาก OpenRouter → ใช้คำนวณ cost ต่อคำตอบ
     extract:(j)=>(j.data||[]).filter(m=>((m.architecture||{}).input_modalities||[]).includes("image"))
-      .map(m=>({ id:m.id, free: !!(m.pricing && m.pricing.prompt==="0" && m.pricing.completion==="0") }))
+      .map(m=>({ id:m.id, free: !!(m.pricing && m.pricing.prompt==="0" && m.pricing.completion==="0"),
+        pin:+((m.pricing||{}).prompt)||0, pout:+((m.pricing||{}).completion)||0 }))
       .sort((a,b)=>a.id.localeCompare(b.id)),
   };
 }

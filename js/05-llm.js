@@ -12,6 +12,7 @@ function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024}
       body:{ systemInstruction:{parts:[{text:system}]}, contents:[{role:"user",parts}],
         generationConfig:{ maxOutputTokens:maxTokens, ...(json?{responseMimeType:"application/json"}:{}) } },
       extract:(j)=>(j.candidates?.[0]?.content?.parts||[]).map(x=>x.text||"").join(""),
+      usage:(j)=>j.usageMetadata?{in:j.usageMetadata.promptTokenCount,out:j.usageMetadata.candidatesTokenCount}:null,
     };
   }
   if(p==="claude"){
@@ -27,6 +28,8 @@ function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024}
         "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
       body:{ model, max_tokens:maxTokens, system, stream:true, messages },
       extract:(j)=>(j.type==="content_block_delta"&&j.delta?.type==="text_delta")?(j.delta.text||""):"",
+      // claude: input ใน message_start, output (cumulative) ใน message_delta
+      usage:(j)=>{ if(j.type==="message_start"&&j.message?.usage) return {in:j.message.usage.input_tokens}; if(j.type==="message_delta"&&j.usage) return {out:j.usage.output_tokens}; return null; },
       prefill: json ? "{" : "",
     };
   }
@@ -42,9 +45,10 @@ function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024}
     url, headers,
     // ไม่ใส่ max_tokens สำหรับ openai/openrouter — gpt-5 reasoning เผา token แล้วเหลือ output ว่าง (est ได้ JSON ว่าง),
     // และบาง model reject max_tokens (ต้อง max_completion_tokens). ปล่อยใช้ default ของ model (กว้างพอ)
-    body:{ model, stream:true, messages:[{role:"system",content:system},{role:"user",content:userContent}],
+    body:{ model, stream:true, stream_options:{include_usage:true}, messages:[{role:"system",content:system},{role:"user",content:userContent}],
       ...(json?{response_format:{type:"json_object"}}:{}) },
     extract:(j)=>j.choices?.[0]?.delta?.content||"",
+    usage:(j)=>j.usage?{in:j.usage.prompt_tokens,out:j.usage.completion_tokens}:null,  // chunk ท้าย (stream_options)
   };
 }
 
@@ -53,6 +57,7 @@ async function streamLLM(req, onToken){
   if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,400)); }
   const reader=res.body.getReader(); const dec=new TextDecoder();
   let buf="", full=req.prefill||"";
+  req.usageAcc={in:0,out:0};   // เก็บ token usage (อ่านหลัง await: req.usageAcc)
   while(true){
     const {done,value}=await reader.read(); if(done) break;
     buf+=dec.decode(value,{stream:true});
@@ -62,7 +67,11 @@ async function streamLLM(req, onToken){
       if(!l||!l.startsWith("data:")) continue;
       const data=l.slice(5).trim();
       if(data==="[DONE]") continue;
-      try{ const tok=req.extract(JSON.parse(data)); if(tok){ full+=tok; onToken&&onToken(full); } }catch{}
+      try{
+        const j=JSON.parse(data);
+        const tok=req.extract(j); if(tok){ full+=tok; onToken&&onToken(full); }
+        if(req.usage){ const u=req.usage(j); if(u){ if(u.in!=null) req.usageAcc.in=u.in; if(u.out!=null) req.usageAcc.out=u.out; } }
+      }catch{}
     }
   }
   return full;
