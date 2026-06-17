@@ -4,6 +4,17 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Meeting Assistant</title>
+<!-- Tailwind Play CDN (dev — needs internet on load; "not for production" warning is expected) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    corePlugins: { preflight: false },   // keep existing component CSS (.ans/markdown/forms) un-reset
+    theme: { extend: { colors: {
+      bg:"#0F1419", panel:"#161B22", panel2:"#1A222C", border:"#26313D",
+      text:"#E6EDF3", muted:"#9BA8B4", teal:"#2DD4BF", amber:"#F0A93B", red:"#F0726B",
+    }}},
+  };
+</script>
 <style>
   :root {
     --bg:#0F1419; --panel:#161B22; --panel2:#1A222C; --border:#26313D;
@@ -101,24 +112,105 @@
   #freeFilter.on { border-color:var(--teal); background:var(--teal); color:#06231F;
     box-shadow:0 0 10px rgba(45,212,191,.45); }
   #freeFilter:disabled { opacity:.4; cursor:not-allowed; }
+  /* ── app shell: sidebar + views ── */
+  .app { display:flex; height:100vh; overflow:hidden; }
+  .sidebar { width:264px; flex:none; background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden; }
+  .side-head { display:flex; align-items:center; gap:8px; padding:14px 14px 10px; }
+  .side-head h1 { flex:1; font-size:15px; }
+  .newbtn { background:var(--teal); color:#06231F; border:none; border-radius:8px;
+    padding:7px 12px; font-size:13px; font-weight:700; }
+  .newbtn:focus-visible { outline:2px solid var(--text); outline-offset:2px; }
+  .side-list { flex:1; overflow-y:auto; padding:6px 8px; display:flex; flex-direction:column; gap:3px; }
+  .side-item { display:flex; align-items:center; gap:6px; padding:8px 10px; border-radius:8px;
+    cursor:pointer; border:1px solid transparent; }
+  .side-item:hover { background:var(--panel2); }
+  .side-item.on { background:rgba(45,212,191,.1); border-color:var(--teal); }
+  .side-item .t { flex:1; min-width:0; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .side-item .d { font-size:11px; color:var(--muted); }
+  .side-item .del { color:var(--muted); border:none; background:none; opacity:0; font-size:13px; padding:4px 8px; }
+  .side-item:hover .del { opacity:.7; }
+  .side-item .del:hover { color:var(--red); opacity:1; }
+  .side-empty { color:var(--muted); font-size:12px; padding:10px; text-align:center; }
+  .side-foot { border-top:1px solid var(--border); padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
+  .side-foot label { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted); }
+  .side-foot input[type=range] { flex:1; accent-color:var(--teal); }
+  .view { flex:1; overflow-y:auto; position:relative; }
+  .menu-toggle { display:none; }
+  .home-hero { max-width:820px; margin:0 auto; padding:48px 16px; }
+  .home-hero h2 { font-size:22px; margin:0 0 6px; }
+  .home-hero p { color:var(--muted); font-size:14px; margin:0 0 20px; }
+  .home-card { display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--border);
+    border-radius:10px; padding:12px 14px; margin-top:8px; cursor:pointer; }
+  .home-card:hover { border-color:var(--teal); }
+  .home-card .t { flex:1; font-size:14px; font-weight:600; }
+  .home-card .d { font-size:11px; color:var(--muted); }
+  .old-meta { max-width:820px; margin:0 auto; padding:20px 16px 0; }
+  .old-meta h2 { font-size:18px; margin:0 0 4px; }
+  .old-meta .sub { color:var(--muted); font-size:12px; }
+  @media (max-width:700px){
+    .sidebar { position:fixed; top:0; bottom:0; left:0; z-index:30; transform:translateX(-100%);
+      transition:transform .2s; box-shadow:2px 0 20px rgba(0,0,0,.4); }
+    .sidebar.open { transform:none; }
+    .menu-toggle { display:flex; position:sticky; top:0; z-index:10; margin:10px; width:36px; height:36px;
+      align-items:center; justify-content:center; background:var(--panel2); border:1px solid var(--border);
+      border-radius:8px; color:var(--text); font-size:16px; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .dot.live, .spin { animation:none; }
   }
   #settings { margin-bottom:14px; }
+  .back-btn { display:inline-flex; align-items:center; gap:6px; background:var(--panel2);
+    border:1px solid var(--border); border-radius:7px; color:var(--muted); font-size:12px;
+    font-weight:600; padding:6px 12px; margin-bottom:10px; transition:all .12s; }
+  .back-btn:hover { color:var(--text); border-color:var(--muted); }
+  .home-link { font-size:11px; color:var(--muted); text-decoration:none; margin-left:8px; cursor:pointer;
+    background:none; border:none; font-family:inherit; vertical-align:middle; }
+  .home-link:hover { color:var(--teal); }
   .font-row { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted); margin-top:2px; }
   .font-row input[type=range] { flex:1; accent-color:var(--teal); }
 </style>
 </head>
 <body>
 <video id="screenVideo" muted playsinline style="display:none"></video>
-<div class="wrap">
-  <div class="row" style="margin-bottom:18px">
-    <div id="dot" class="dot"></div>
-    <h1>Meeting Assistant</h1>
-    <span id="count" class="mono" style="font-size:11px;color:var(--muted);margin-left:auto">0 รายการ</span>
-    <button id="gear" class="iconbtn" title="ตั้งค่า" aria-expanded="false" aria-controls="settings">⚙</button>
-    <button id="clear" class="iconbtn" title="ล้างทั้งหมด" style="display:none">🗑</button>
-  </div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="side-head">
+      <h1 class="bg-gradient-to-r from-teal to-emerald-300 bg-clip-text text-transparent">Meeting Assistant</h1>
+      <button id="newSess" class="newbtn transition-all hover:brightness-110 active:scale-95 shadow-md shadow-teal/30">＋ New</button>
+    </div>
+    <div class="side-list" id="sessList"></div>
+    <div class="side-foot">
+      <button id="homeBtn" class="pill transition-colors hover:border-teal" style="justify-content:center">🏠 หน้าหลัก</button>
+    </div>
+  </aside>
+  <main class="view">
+    <button id="menuToggle" class="menu-toggle" title="เมนู">☰</button>
+
+    <div id="viewHome" style="display:none">
+      <div class="home-hero">
+        <h2 class="bg-gradient-to-r from-teal to-emerald-300 bg-clip-text text-transparent text-3xl font-extrabold">ยินดีต้อนรับ</h2>
+        <p>เลือก session เก่าจากด้านซ้าย หรือเริ่มใหม่</p>
+        <button id="homeNew" class="newbtn transition-all hover:brightness-110 active:scale-95 shadow-md shadow-teal/30">＋ เริ่ม session ใหม่</button>
+        <div id="homeList" style="margin-top:20px"></div>
+      </div>
+    </div>
+
+    <div id="viewOld" style="display:none">
+      <div class="old-meta" id="oldMeta"></div>
+      <div class="wrap" style="padding-top:14px"><div id="resultsOld"></div></div>
+    </div>
+
+    <div id="viewCurrent">
+      <div class="wrap">
+        <div class="row" style="margin-bottom:18px">
+          <div id="dot" class="dot"></div>
+          <span id="curTitle" style="font-weight:600;font-size:14px">Session ใหม่</span>
+          <button class="home-link" id="curHomeLink" title="ไปหน้าหลัก">หน้าหลัก</button>
+          <span id="count" class="mono" style="font-size:11px;color:var(--muted);margin-left:auto">0 รายการ</span>
+          <button id="gear" class="iconbtn" title="ตั้งค่า" aria-expanded="false" aria-controls="settings">⚙</button>
+          <button id="clear" class="iconbtn" title="ล้างทั้งหมด" style="display:none">🗑</button>
+        </div>
 
   <!-- Settings -->
   <div id="settings" class="bar" style="flex-direction:column;align-items:stretch;gap:10px">
@@ -198,7 +290,10 @@
   <div id="error" class="warn" style="display:none"></div>
   <div id="results"></div>
   <div id="empty" style="text-align:center;color:var(--muted);font-size:13px;margin-top:40px"></div>
-</div>
+      </div><!-- /.wrap -->
+    </div><!-- /#viewCurrent -->
+  </main>
+</div><!-- /.app -->
 
 <!-- optional LOCAL-ONLY key config (gitignored). copy config.local.example.js → config.local.js.
      sets window.__MA_KEYS__; used as a fallback only when no key is entered. 404 if absent (harmless). -->
@@ -270,7 +365,8 @@ const providerSel=$("provider"), modelInp=$("model"), modelSel=$("modelSel"), ke
 const fetchBtn=$("fetchModels"), freeBtn=$("freeFilter"), modelStatus=$("modelStatus"), silenceInp=$("silenceSec");
 const results=$("results"), empty=$("empty"), errBox=$("error"), statusEl=$("status");
 const dot=$("dot"), countEl=$("count");
-const fontRange=$("fontRange"), fontVal=$("fontVal");
+const sessListEl=$("sessList"), homeListEl=$("homeList"), oldMetaEl=$("oldMeta"), resultsOld=$("resultsOld"),
+  curTitleEl=$("curTitle"), fontRange=$("fontRange"), fontVal=$("fontVal");
 
 // ── Settings init ──
 function modelKey(p){ return "ma_model_"+p; }
@@ -563,7 +659,7 @@ function bumpCount(){
     empty.style.display="none";
   }
 }
-$("clear").onclick=()=>{ results.innerHTML=""; items=0; bumpCount(); };
+$("clear").onclick=()=>{ results.innerHTML=""; items=0; bumpCount(); if(curSess){ curSess.items=[]; persistSess(curSess); renderSessions(); } };
 // copy code blocks (delegated — survives stream re-renders)
 results.addEventListener("click",(e)=>{
   const btn=e.target.closest(".codecopy"); if(!btn) return;
@@ -625,6 +721,17 @@ function newCard(q, hadImage){
   results.prepend(card); items++; bumpCount();
   return card;
 }
+// rebuild saved cards into a container (readonly) — qa via markdown, est via renderEstimate
+function renderSessionInto(container, sess, newestFirst){
+  container.innerHTML="";
+  let list=(sess.items||[]).slice(); if(newestFirst) list.reverse();
+  list.forEach(it=>{
+    const card=cardHead(it.q, it.hadImage);
+    if(it.mode==="est"){ try{ renderEstimate(card, JSON.parse(it.raw)); }catch{ card.appendChild(el("div","ans",esc(it.raw))); } }
+    else card.appendChild(el("div","ans",mdToHtml(it.raw||"")));
+    container.appendChild(card);
+  });
+}
 
 function renderEstimate(card, e){
   const body=el("div");
@@ -674,6 +781,7 @@ async function submit(override){
       const req=buildRequest(provider,key,model,{system:QA_SYSTEM,text:q,image,json:false});
       const full=await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); });
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
+      if(full && full.trim()) saveItem({q, mode:"qa", hadImage:!!image, raw:full});
     }catch(e){ ans.textContent=""; ans.appendChild(el("span","warn","⚠ "+esc(e.message))); }
   } else {
     const card=newCard(q, !!image);
@@ -684,6 +792,7 @@ async function submit(override){
       const clean=raw.replace(/```json|```/g,"").trim();
       const est=JSON.parse(clean);
       load.remove(); renderEstimate(card,est);
+      saveItem({q, mode:"est", hadImage:!!image, raw:JSON.stringify(est)});
     }catch(e){ load.textContent=""; load.appendChild(el("span","warn","⚠ "+esc(e.message))); }
   }
   busy=false;
@@ -691,7 +800,86 @@ async function submit(override){
 
 refreshStatus();
 
-// (session history / sidebar removed — single-page app)
+// ── Sessions (history) + view routing ──
+let viewName="current", oldViewId=null, curId=store.get("ma_cur")||null, curSess=null;
+function sessIndex(){ try{ return JSON.parse(store.get("ma_sessions")||"[]"); }catch{ return []; } }
+function saveIndex(ix){ store.set("ma_sessions", JSON.stringify(ix)); }
+function loadSess(id){ try{ return JSON.parse(store.get("ma_sess_"+id)||"null"); }catch{ return null; } }
+function persistSess(s){ store.set("ma_sess_"+s.id, JSON.stringify(s)); }
+function fmtDate(ts){ const d=new Date(ts); return d.toLocaleDateString("th-TH",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}); }
+
+function ensureSession(){
+  if(curSess) return;
+  curId="s"+Date.now();
+  curSess={ id:curId, title:"", createdAt:Date.now(), updatedAt:Date.now(), provider, model:modelInp.value, items:[] };
+  persistSess(curSess);
+  const ix=sessIndex(); ix.unshift({id:curId,title:"Session ใหม่",createdAt:curSess.createdAt,updatedAt:curSess.updatedAt}); saveIndex(ix);
+  store.set("ma_cur", curId);
+}
+function setCurTitle(t){ curTitleEl.textContent=t; curTitleEl.title=t; }
+function newSession(){
+  curId=null; curSess=null; ensureSession();
+  results.innerHTML=""; items=0; bumpCount();
+  setCurTitle("Session ใหม่");
+  renderSessions(); showView("current");
+}
+function saveItem(item){
+  ensureSession();
+  curSess.items.push(item);
+  curSess.updatedAt=Date.now(); curSess.provider=provider; curSess.model=modelInp.value;
+  if(!curSess.title){ curSess.title=(item.q||"").slice(0,48); setCurTitle(curSess.title); }
+  persistSess(curSess);
+  const ix=sessIndex(); const e=ix.find(x=>x.id===curId);
+  if(e){ e.title=curSess.title||"Session ใหม่"; e.updatedAt=curSess.updatedAt; ix.sort((a,b)=>b.updatedAt-a.updatedAt); saveIndex(ix); }
+  renderSessions();
+}
+function deleteSession(id){
+  if(!confirm("ลบ session นี้? กู้คืนไม่ได้")) return;
+  store.remove("ma_sess_"+id);
+  saveIndex(sessIndex().filter(x=>x.id!==id));
+  if(id===curId){ curId=null; curSess=null; store.remove("ma_cur"); results.innerHTML=""; items=0; bumpCount(); setCurTitle("Session ใหม่"); }
+  if(viewName==="old" && oldViewId===id){ showView("home"); }
+  renderSessions();
+}
+function renderSessions(){
+  const ix=sessIndex();
+  sessListEl.innerHTML = ix.length
+    ? ix.map(s=>`<div class="side-item transition-colors${s.id===curId&&viewName==="current"?" on":""}" data-id="${s.id}"><span class="t">${esc(s.title||"Session ใหม่")}</span><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}" title="ลบ" aria-label="ลบ session ${esc(s.title||"Session ใหม่")}">✕</button></div>`).join("")
+    : `<div class="side-empty">ยังไม่มี session</div>`;
+  homeListEl.innerHTML = ix.length
+    ? ix.map(s=>`<div class="home-card transition-all hover:-translate-y-0.5 hover:shadow-xl" data-id="${s.id}"><div class="t">${esc(s.title||"Session ใหม่")}</div><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}" aria-label="ลบ session ${esc(s.title||"Session ใหม่")}">✕</button></div>`).join("")
+    : `<div class="side-empty">ยังไม่มี session — กดเริ่มใหม่</div>`;
+}
+function showView(name){
+  viewName=name;
+  $("viewHome").style.display = name==="home"?"block":"none";
+  $("viewCurrent").style.display = name==="current"?"block":"none";
+  $("viewOld").style.display = name==="old"?"block":"none";
+  $("sidebar").classList.remove("open");
+  renderSessions();
+}
+function openSession(id){
+  if(id===curId){ showView("current"); return; }
+  const s=loadSess(id); if(!s){ showView("home"); return; }
+  oldViewId=id;
+  oldMetaEl.innerHTML=`<button class="back-btn" id="backToHome">← กลับ</button><h2>${esc(s.title||"Session")}</h2><div class="sub">${fmtDate(s.createdAt)} · ${esc(s.provider||"")} · ${esc(s.model||"")} · ${(s.items||[]).length} รายการ</div>`;
+  oldMetaEl.querySelector("#backToHome").onclick=()=>showView("home");
+  renderSessionInto(resultsOld, s, false);
+  showView("old");
+}
+function sessClick(e){
+  const del=e.target.closest("[data-del]");
+  if(del){ e.stopPropagation(); deleteSession(del.getAttribute("data-del")); return; }
+  const it=e.target.closest("[data-id]");
+  if(it) openSession(it.getAttribute("data-id"));
+}
+sessListEl.addEventListener("click", sessClick);
+homeListEl.addEventListener("click", sessClick);
+$("newSess").onclick=newSession;
+$("homeNew").onclick=newSession;
+$("homeBtn").onclick=()=>showView("home");
+$("curHomeLink").onclick=()=>showView("home");
+$("menuToggle").onclick=()=>$("sidebar").classList.toggle("open");
 
 // ── Font size ──
 let fontPx = +store.get("ma_fontsize")||14;
@@ -699,8 +887,20 @@ function applyFont(px){ document.documentElement.style.setProperty("--fs", px+"p
 fontRange.value=fontPx; applyFont(fontPx);
 fontRange.oninput=()=>{ fontPx=+fontRange.value; applyFont(fontPx); store.set("ma_fontsize", fontPx); };
 
-// init: show empty-state text
-bumpCount();
+// ── Init: restore current session or land on home ──
+(function initSessions(){
+  if(curId && loadSess(curId)){
+    curSess=loadSess(curId);
+    renderSessionInto(results, curSess, true);
+    items=curSess.items.length; bumpCount();
+    setCurTitle(curSess.title||"Session ใหม่");
+    renderSessions(); showView("current");
+  } else if(sessIndex().length){
+    curId=null; curSess=null; renderSessions(); showView("home");
+  } else {
+    newSession();
+  }
+})();
 </script>
 </body>
 </html>

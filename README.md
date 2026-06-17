@@ -9,7 +9,20 @@
 - **🧠 ถาม AI** — ตอบสดแบบ stream token-by-token
 - **📊 ประเมินงาน** — ป้อนงาน → ได้ผลเป็น JSON (สรุป, stack, เวลารวม, breakdown, ความเสี่ยง)
 - **Multi-provider** — OpenRouter, Google Gemini, OpenAI (GPT), Anthropic (Claude) — ทุกตัว vision-capable
+- **Session history** — บันทึกแต่ละ session อัตโนมัติ (localStorage) เปิดดูย้อนหลังได้
 - **Custom font size** — slider ในตั้งค่า ⚙ ปรับขนาดฟอนต์คำตอบ
+
+## Layout
+
+**sidebar + 3 view** (แต่งด้วย Tailwind):
+- **Sidebar** — ชื่อแอป, **＋ New**, list session ย้อนหลัง (วันที่ + × ลบ มี confirm), 🏠 หน้าหลัก
+- **หน้าหลัก** (`#viewHome`) — welcome + รายการ session
+- **current session** (`#viewCurrent`) — UI ใช้งานสด
+- **session เก่า** (`#viewOld`) — readonly Q&A ที่บันทึก + meta + ปุ่มกลับ
+
+current auto-save ต่อเนื่อง; ＋New ขึ้น session ใหม่; reload restore session ล่าสุด
+
+**Tailwind** มาจาก [Play CDN](https://cdn.tailwindcss.com) (`corePlugins.preflight:false` กัน reset ทับ CSS เดิม) — ต้องต่อเน็ตตอนโหลดหน้า
 
 ## Usage
 
