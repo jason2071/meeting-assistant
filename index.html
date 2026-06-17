@@ -909,12 +909,23 @@ results.addEventListener("click",(e)=>{
   if(item) summarizeMeeting(item, sb.closest(".bubble"));
 });
 
-// แปลง JSON ที่ LLM ตอบมาแบบหลวมๆ — ตัดข้อความนำ/ตาม (เอา {…} ก้อนนอกสุด) + ลบ trailing comma
+// แปลง JSON ที่ LLM ตอบมาแบบหลวมๆ — ลองซ่อมทีละชั้น (parse strict ก่อน แล้วค่อยซ่อมสะสม)
 function looseJSON(s){
   const a=s.indexOf("{"), b=s.lastIndexOf("}");
-  const t=(a>=0 && b>a) ? s.slice(a,b+1) : s;
-  try{ return JSON.parse(t); }catch{}
-  return JSON.parse(t.replace(/,(\s*[}\]])/g,"$1"));  // ลองอีกครั้งหลังลบ trailing comma; fail → โยน error
+  let t=(a>=0 && b>a) ? s.slice(a,b+1) : s;   // ตัดข้อความนำ/ตาม เอา {…} ก้อนนอกสุด
+  const fixes=[
+    x=>x,                                                              // ตามที่ได้มา
+    x=>x.replace(/\/\/[^\n]*/g,"").replace(/\/\*[\s\S]*?\*\//g,""),     // ลบ comment // และ /* */
+    x=>x.replace(/("(?:[^"\\]|\\.)*")(\s*)(["{[])/g,"$1,$2$3")          // แทรก comma ที่ขาดหลัง string ก่อน value ถัดไป
+        .replace(/([}\]])(\s*)(["{[])/g,"$1,$2$3"),                    // …หลัง }/] ก่อน value ถัดไป
+    x=>x.replace(/,(\s*[}\]])/g,"$1"),                                 // ลบ trailing comma
+  ];
+  let cur=t, err;
+  for(const f of fixes){
+    cur=f(cur);
+    try{ return JSON.parse(cur); }catch(e){ err=e; }
+  }
+  throw err;  // ซ่อมไม่ได้ → โยน error ล่าสุดให้เห็น
 }
 
 // ── Submit ──
