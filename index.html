@@ -7,7 +7,7 @@
 <style>
   :root {
     --bg:#0F1419; --panel:#161B22; --panel2:#1A222C; --border:#26313D;
-    --text:#E6EDF3; --muted:#8B98A5; --teal:#2DD4BF; --amber:#F0A93B; --red:#F0726B;
+    --text:#E6EDF3; --muted:#9BA8B4; --teal:#2DD4BF; --amber:#F0A93B; --red:#F0726B;
     --fs:14px;
   }
   * { box-sizing:border-box; }
@@ -26,22 +26,24 @@
   .spin { animation:spin .8s linear infinite; }
   button { font-family:inherit; cursor:pointer; }
   button:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
-  .iconbtn { display:flex; align-items:center; justify-content:center; width:30px; height:30px;
+  .iconbtn { display:flex; align-items:center; justify-content:center; width:36px; height:36px;
     background:var(--panel2); border:1px solid var(--border); border-radius:7px; color:var(--muted); }
   .tab { display:flex; align-items:center; gap:7px; padding:8px 14px; border-radius:9px;
     border:1px solid var(--border); background:var(--panel); color:var(--muted);
     font-size:13px; font-weight:600; }
   .tab.on { border-color:var(--teal); background:rgba(45,212,191,.1); color:var(--teal); }
   .bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--panel);
-    border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px; }
+    border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;
+    transition:border-color .2s; }
   .bar.active { border-color:var(--teal); }
-  .pill { display:flex; align-items:center; gap:6px; padding:9px 11px; border-radius:9px;
+  .pill { display:flex; align-items:center; gap:6px; padding:10px 12px; border-radius:9px;
     border:1px solid var(--border); background:var(--panel2); color:var(--muted);
     font-size:12px; font-weight:600; }
   .pill.on { border-color:var(--teal); background:rgba(45,212,191,.08); color:var(--teal); }
   .mic { display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:10px;
     border:none; background:var(--teal); color:#06231F; font-weight:700; font-size:14px; }
   .mic.on { background:var(--red); color:#fff; }
+  .mic:focus-visible { outline:2px solid var(--text); outline-offset:2px; }
   .send { margin-left:auto; display:flex; align-items:center; gap:6px; background:var(--panel2);
     color:var(--muted); border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; }
   .send.ready { background:var(--teal); color:#06231F; }
@@ -68,7 +70,7 @@
   .ans .codeblock { margin:10px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--panel2); }
   .ans .codebar { display:flex; align-items:center; justify-content:space-between; gap:8px;
     padding:5px 10px; background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
-  .ans .codebar span { font-size:10.5px; font-weight:700; letter-spacing:.6px; color:var(--muted); text-transform:uppercase; }
+  .ans .codebar span { font-size:11.5px; font-weight:700; letter-spacing:.6px; color:var(--muted); text-transform:uppercase; }
   .ans .codecopy { background:transparent; border:1px solid var(--border); border-radius:5px;
     color:var(--muted); font-size:10.5px; font-weight:600; padding:2px 9px; }
   .ans .codecopy:hover { color:var(--teal); border-color:var(--teal); }
@@ -89,11 +91,12 @@
   .seg button { padding:5px 10px; border-radius:6px; border:none; font-size:12px; font-weight:600;
     background:transparent; color:var(--muted); }
   .seg button.on { background:var(--teal); color:#06231F; }
+  .seg button:focus-visible { outline:2px solid #fff; outline-offset:2px; }
   .warn { color:var(--amber); font-size:12px; display:flex; gap:8px; align-items:center; margin-bottom:12px; }
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   @media (max-width:560px){ .grid{ grid-template-columns:1fr; } }
   a { color:var(--teal); }
-  .minibtn { background:var(--panel2); border:1px solid var(--border); border-radius:6px;
+  .minibtn { background:var(--panel2); border:1px solid var(--border); border-radius:7px;
     color:var(--muted); line-height:1; transition:all .12s; }
   #freeFilter.on { border-color:var(--teal); background:var(--teal); color:#06231F;
     box-shadow:0 0 10px rgba(45,212,191,.45); }
@@ -106,14 +109,15 @@
   .side-head h1 { flex:1; font-size:15px; }
   .newbtn { background:var(--teal); color:#06231F; border:none; border-radius:8px;
     padding:7px 12px; font-size:13px; font-weight:700; }
+  .newbtn:focus-visible { outline:2px solid var(--text); outline-offset:2px; }
   .side-list { flex:1; overflow-y:auto; padding:6px 8px; display:flex; flex-direction:column; gap:3px; }
   .side-item { display:flex; align-items:center; gap:6px; padding:8px 10px; border-radius:8px;
     cursor:pointer; border:1px solid transparent; }
   .side-item:hover { background:var(--panel2); }
   .side-item.on { background:rgba(45,212,191,.1); border-color:var(--teal); }
   .side-item .t { flex:1; min-width:0; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .side-item .d { font-size:10px; color:var(--muted); }
-  .side-item .del { color:var(--muted); border:none; background:none; opacity:0; font-size:13px; padding:0 2px; }
+  .side-item .d { font-size:11px; color:var(--muted); }
+  .side-item .del { color:var(--muted); border:none; background:none; opacity:0; font-size:13px; padding:4px 8px; }
   .side-item:hover .del { opacity:.7; }
   .side-item .del:hover { color:var(--red); opacity:1; }
   .side-empty { color:var(--muted); font-size:12px; padding:10px; text-align:center; }
@@ -141,6 +145,19 @@
       align-items:center; justify-content:center; background:var(--panel2); border:1px solid var(--border);
       border-radius:8px; color:var(--text); font-size:16px; }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .dot.live, .spin { animation:none; }
+  }
+  #settings { margin-bottom:14px; }
+  .back-btn { display:inline-flex; align-items:center; gap:6px; background:var(--panel2);
+    border:1px solid var(--border); border-radius:7px; color:var(--muted); font-size:12px;
+    font-weight:600; padding:6px 12px; margin-bottom:10px; transition:all .12s; }
+  .back-btn:hover { color:var(--text); border-color:var(--muted); }
+  .home-link { font-size:11px; color:var(--muted); text-decoration:none; margin-left:8px; cursor:pointer;
+    background:none; border:none; font-family:inherit; vertical-align:middle; }
+  .home-link:hover { color:var(--teal); }
+  .font-row { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted); margin-top:2px; }
+  .font-row input[type=range] { flex:1; accent-color:var(--teal); }
 </style>
 </head>
 <body>
@@ -154,7 +171,6 @@
     <div class="side-list" id="sessList"></div>
     <div class="side-foot">
       <button id="homeBtn" class="pill" style="justify-content:center">🏠 หน้าหลัก</button>
-      <label>ฟอนต์ <input id="fontRange" type="range" min="12" max="22" step="1"><span id="fontVal" class="mono"></span></label>
     </div>
   </aside>
   <main class="view">
@@ -162,7 +178,7 @@
 
     <div id="viewHome" style="display:none">
       <div class="home-hero">
-        <h2>Meeting Assistant</h2>
+        <h2>ยินดีต้อนรับ</h2>
         <p>เลือก session เก่าจากด้านซ้าย หรือเริ่มใหม่</p>
         <button id="homeNew" class="newbtn">＋ เริ่ม session ใหม่</button>
         <div id="homeList" style="margin-top:20px"></div>
@@ -179,8 +195,9 @@
         <div class="row" style="margin-bottom:18px">
           <div id="dot" class="dot"></div>
           <span id="curTitle" style="font-weight:600;font-size:14px">Session ใหม่</span>
+          <button class="home-link" id="curHomeLink" title="ไปหน้าหลัก">หน้าหลัก</button>
           <span id="count" class="mono" style="font-size:11px;color:var(--muted);margin-left:auto">0 รายการ</span>
-          <button id="gear" class="iconbtn" title="ตั้งค่า">⚙</button>
+          <button id="gear" class="iconbtn" title="ตั้งค่า" aria-expanded="false" aria-controls="settings">⚙</button>
           <button id="clear" class="iconbtn" title="ล้างทั้งหมด" style="display:none">🗑</button>
         </div>
 
@@ -200,9 +217,9 @@
         <div class="lbl" style="margin-bottom:6px;display:flex;align-items:center;gap:8px">
           <span>MODEL</span>
           <button id="fetchModels" type="button" class="minibtn" title="โหลดรายชื่อ model จาก provider"
-            style="width:22px;height:22px;font-size:13px;padding:0">↻</button>
+            style="width:28px;height:28px;font-size:13px;padding:0">↻</button>
           <button id="freeFilter" type="button" class="minibtn" title="กรองเฉพาะ model ฟรี"
-            style="height:22px;padding:0 9px;font-size:11px;font-weight:700;letter-spacing:0">Free</button>
+            style="height:28px;padding:0 10px;font-size:11px;font-weight:700;letter-spacing:0">Free</button>
           <span id="modelStatus" class="mono" style="font-weight:500;letter-spacing:0;color:var(--muted)"></span>
         </div>
         <select id="modelSel" style="width:100%"></select>
@@ -217,6 +234,13 @@
       <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">⚡ ส่งอัตโนมัติหลังเงียบ</div>
       <input id="silenceSec" type="number" min="0.5" max="6" step="0.1" style="width:84px" />
       <span class="mono" style="font-size:11px;color:var(--muted)">วินาที · default 1.8 สำหรับถามสด</span>
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">ขนาดตัวอักษร (คำตอบ)</div>
+      <div class="font-row">
+        <input id="fontRange" type="range" min="12" max="22" step="1">
+        <span id="fontVal" class="mono"></span>
+      </div>
     </div>
     <div class="mono" style="font-size:11px;color:var(--muted)">
       key เก็บใน sessionStorage ของ tab นี้เท่านั้น (ล้างเมื่อปิด tab) ไม่ส่งไปไหนนอกจาก provider ที่เลือก
@@ -254,9 +278,7 @@
 
   <div id="error" class="warn" style="display:none"></div>
   <div id="results"></div>
-  <div id="empty" style="text-align:center;color:var(--muted);font-size:13px;margin-top:40px">
-    ใส่ API key ในตั้งค่า ⚙ แล้วเริ่มถามได้เลย
-  </div>
+  <div id="empty" style="text-align:center;color:var(--muted);font-size:13px;margin-top:40px"></div>
       </div><!-- /.wrap -->
     </div><!-- /#viewCurrent -->
   </main>
@@ -438,7 +460,12 @@ modelSel.onchange = ()=>{ modelInp.value=modelSel.value; store.set(modelKey(prov
 keyInp.oninput = ()=>skey.set(keyKey(provider), keyInp.value.trim());
 loadProvider(provider);
 
-$("gear").onclick = ()=>{ const s=$("settings"); s.style.display = s.style.display==="none"?"flex":"none"; };
+$("gear").onclick = ()=>{
+  const s=$("settings"), g=$("gear");
+  const open = s.style.display==="none";
+  s.style.display = open?"flex":"none";
+  g.setAttribute("aria-expanded", open?"true":"false");
+};
 
 // ── Tabs ──
 $("tabQa").onclick=()=>setMode("qa");
@@ -608,7 +635,19 @@ async function streamLLM(req, onToken){
 
 // ── Rendering ──
 let items=0;
-function bumpCount(){ countEl.textContent=items+" รายการ"; $("clear").style.display=items?"flex":"none"; empty.style.display=items?"none":"block"; }
+function bumpCount(){
+  countEl.textContent=items+" รายการ";
+  $("clear").style.display=items?"flex":"none";
+  if(!items){
+    const hasKey = !!(keyInp.value.trim() || getKey(provider));
+    empty.textContent = hasKey
+      ? "พิมพ์คำถามหรือเริ่มฟังเสียงเพื่อถาม AI"
+      : "ใส่ API key ในตั้งค่า ⚙ แล้วเริ่มถามได้เลย";
+    empty.style.display="block";
+  } else {
+    empty.style.display="none";
+  }
+}
 $("clear").onclick=()=>{ results.innerHTML=""; items=0; bumpCount(); if(curSess){ curSess.items=[]; persistSess(curSess); renderSessions(); } };
 // copy code blocks (delegated — survives stream re-renders)
 results.addEventListener("click",(e)=>{
@@ -766,36 +805,38 @@ function ensureSession(){
   const ix=sessIndex(); ix.unshift({id:curId,title:"Session ใหม่",createdAt:curSess.createdAt,updatedAt:curSess.updatedAt}); saveIndex(ix);
   store.set("ma_cur", curId);
 }
+function setCurTitle(t){ curTitleEl.textContent=t; curTitleEl.title=t; }
 function newSession(){
   curId=null; curSess=null; ensureSession();
   results.innerHTML=""; items=0; bumpCount();
-  curTitleEl.textContent="Session ใหม่";
+  setCurTitle("Session ใหม่");
   renderSessions(); showView("current");
 }
 function saveItem(item){
   ensureSession();
   curSess.items.push(item);
   curSess.updatedAt=Date.now(); curSess.provider=provider; curSess.model=modelInp.value;
-  if(!curSess.title){ curSess.title=(item.q||"").slice(0,48); curTitleEl.textContent=curSess.title; }
+  if(!curSess.title){ curSess.title=(item.q||"").slice(0,48); setCurTitle(curSess.title); }
   persistSess(curSess);
   const ix=sessIndex(); const e=ix.find(x=>x.id===curId);
   if(e){ e.title=curSess.title||"Session ใหม่"; e.updatedAt=curSess.updatedAt; ix.sort((a,b)=>b.updatedAt-a.updatedAt); saveIndex(ix); }
   renderSessions();
 }
 function deleteSession(id){
+  if(!confirm("ลบ session นี้? กู้คืนไม่ได้")) return;
   store.remove("ma_sess_"+id);
   saveIndex(sessIndex().filter(x=>x.id!==id));
-  if(id===curId){ curId=null; curSess=null; store.remove("ma_cur"); results.innerHTML=""; items=0; bumpCount(); curTitleEl.textContent="Session ใหม่"; }
+  if(id===curId){ curId=null; curSess=null; store.remove("ma_cur"); results.innerHTML=""; items=0; bumpCount(); setCurTitle("Session ใหม่"); }
   if(viewName==="old" && oldViewId===id){ showView("home"); }
   renderSessions();
 }
 function renderSessions(){
   const ix=sessIndex();
   sessListEl.innerHTML = ix.length
-    ? ix.map(s=>`<div class="side-item${s.id===curId&&viewName==="current"?" on":""}" data-id="${s.id}"><span class="t">${esc(s.title||"Session ใหม่")}</span><button class="del" data-del="${s.id}" title="ลบ">✕</button></div>`).join("")
+    ? ix.map(s=>`<div class="side-item${s.id===curId&&viewName==="current"?" on":""}" data-id="${s.id}"><span class="t">${esc(s.title||"Session ใหม่")}</span><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}" title="ลบ" aria-label="ลบ session ${esc(s.title||"Session ใหม่")}">✕</button></div>`).join("")
     : `<div class="side-empty">ยังไม่มี session</div>`;
   homeListEl.innerHTML = ix.length
-    ? ix.map(s=>`<div class="home-card" data-id="${s.id}"><div class="t">${esc(s.title||"Session ใหม่")}</div><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}">✕</button></div>`).join("")
+    ? ix.map(s=>`<div class="home-card" data-id="${s.id}"><div class="t">${esc(s.title||"Session ใหม่")}</div><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}" aria-label="ลบ session ${esc(s.title||"Session ใหม่")}">✕</button></div>`).join("")
     : `<div class="side-empty">ยังไม่มี session — กดเริ่มใหม่</div>`;
 }
 function showView(name){
@@ -810,7 +851,8 @@ function openSession(id){
   if(id===curId){ showView("current"); return; }
   const s=loadSess(id); if(!s){ showView("home"); return; }
   oldViewId=id;
-  oldMetaEl.innerHTML=`<h2>${esc(s.title||"Session")}</h2><div class="sub">${fmtDate(s.createdAt)} · ${esc(s.provider||"")} · ${esc(s.model||"")} · ${(s.items||[]).length} รายการ</div>`;
+  oldMetaEl.innerHTML=`<button class="back-btn" id="backToHome">← กลับ</button><h2>${esc(s.title||"Session")}</h2><div class="sub">${fmtDate(s.createdAt)} · ${esc(s.provider||"")} · ${esc(s.model||"")} · ${(s.items||[]).length} รายการ</div>`;
+  oldMetaEl.querySelector("#backToHome").onclick=()=>showView("home");
   renderSessionInto(resultsOld, s, false);
   showView("old");
 }
@@ -825,6 +867,7 @@ homeListEl.addEventListener("click", sessClick);
 $("newSess").onclick=newSession;
 $("homeNew").onclick=newSession;
 $("homeBtn").onclick=()=>showView("home");
+$("curHomeLink").onclick=()=>showView("home");
 $("menuToggle").onclick=()=>$("sidebar").classList.toggle("open");
 
 // ── Font size ──
@@ -839,7 +882,7 @@ fontRange.oninput=()=>{ fontPx=+fontRange.value; applyFont(fontPx); store.set("m
     curSess=loadSess(curId);
     renderSessionInto(results, curSess, true);
     items=curSess.items.length; bumpCount();
-    curTitleEl.textContent=curSess.title||"Session ใหม่";
+    setCurTitle(curSess.title||"Session ใหม่");
     renderSessions(); showView("current");
   } else if(sessIndex().length){
     curId=null; curSess=null; renderSessions(); showView("home");
