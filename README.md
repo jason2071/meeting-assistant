@@ -9,18 +9,7 @@
 - **🧠 ถาม AI** — ตอบสดแบบ stream token-by-token
 - **📊 ประเมินงาน** — ป้อนงาน → ได้ผลเป็น JSON (สรุป, stack, เวลารวม, breakdown, ความเสี่ยง)
 - **Multi-provider** — OpenRouter, Google Gemini, OpenAI (GPT), Anthropic (Claude) — ทุกตัว vision-capable
-- **Session history** — บันทึกแต่ละ session อัตโนมัติ (localStorage), เปิดดูย้อนหลังได้
-- **Custom font size** — slider ปรับขนาดฟอนต์คำตอบ
-
-## Layout
-
-แบ่งเป็น **sidebar + 3 view**:
-- **Sidebar** (ซ้าย) — ชื่อแอป, **＋ New** (เริ่ม session ใหม่), list session ย้อนหลัง (คลิกเปิด, × ลบ), 🏠 หน้าหลัก, slider ขนาดฟอนต์
-- **หน้าหลัก** (`#viewHome`) — landing + รายการ session
-- **current session** (`#viewCurrent`) — UI ใช้งานสด (settings/tabs/voice/screen/input/results)
-- **session เก่า** (`#viewOld`) — อ่านย้อนหลัง readonly (Q&A ที่บันทึก + meta provider/model/วันเวลา)
-
-current session auto-save ต่อเนื่อง; กด ＋ New เพื่อขึ้น session ใหม่; ปิดแอปไม่หาย (กลับมา restore session ล่าสุด)
+- **Custom font size** — slider ในตั้งค่า ⚙ ปรับขนาดฟอนต์คำตอบ
 
 ## Usage
 
