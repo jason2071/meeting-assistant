@@ -116,8 +116,12 @@ function updateVoicePreview(txt){
     results.appendChild(voiceWrapEl);
   }
   voiceLiveEl.textContent=txt; scrollBottom();
+  $("sendBtn").classList.toggle("ready", !!finalText.trim() && !busy);  // มี voice แล้ว → ปุ่มส่งพร้อม (กดส่งเองได้แม้ auto ปิด)
 }
-function clearVoicePreview(){ if(voiceWrapEl){ voiceWrapEl.remove(); } voiceWrapEl=null; voiceLiveEl=null; }
+function clearVoicePreview(){
+  if(voiceWrapEl){ voiceWrapEl.remove(); } voiceWrapEl=null; voiceLiveEl=null;
+  $("sendBtn").classList.toggle("ready", !!$("input").value.trim() && !busy);
+}
 // rebuild saved messages into a container (chronological, readonly)
 function renderSessionInto(container, sess){
   container.innerHTML="";
