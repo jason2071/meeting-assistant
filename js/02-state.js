@@ -7,6 +7,29 @@ const store = {
   set(k,v){ try { localStorage.setItem(k,v); } catch {} },
   remove(k){ try { localStorage.removeItem(k); } catch {} },
 };
+// ── IndexedDB (chat sessions — quota ใหญ่กว่า localStorage ~5MB) ──
+// object store 'sessions' (keyPath id) เก็บ session เต็มทั้งก้อน. promise API จิ๋ว ไม่มี dep.
+// ถ้า IDB ใช้ไม่ได้ (private mode/ไม่รองรับ) → idbReady = null, code ฝั่ง session fallback ไป localStorage
+let _idb = null;
+const idbReady = new Promise((resolve)=>{
+  try{
+    const req = indexedDB.open("ma_db", 1);
+    req.onupgradeneeded = ()=>{ if(!req.result.objectStoreNames.contains("sessions")) req.result.createObjectStore("sessions",{keyPath:"id"}); };
+    req.onsuccess = ()=>{ _idb=req.result; resolve(_idb); };
+    req.onerror = ()=>{ console.warn("IndexedDB open failed — fallback localStorage"); resolve(null); };
+  }catch(e){ resolve(null); }
+});
+function _idbTx(mode){ return _idb.transaction("sessions",mode).objectStore("sessions"); }
+function idbGetAll(){   // → {id: session}
+  return new Promise((resolve)=>{
+    if(!_idb) return resolve({});
+    try{ const r=_idbTx("readonly").getAll(); r.onsuccess=()=>{ const m={}; (r.result||[]).forEach(s=>{ if(s&&s.id) m[s.id]=s; }); resolve(m); }; r.onerror=()=>resolve({}); }
+    catch{ resolve({}); }
+  });
+}
+function idbPut(s){ try{ if(_idb) _idbTx("readwrite").put(s).onerror=()=>console.warn("idbPut fail",s&&s.id); }catch(e){} }
+function idbDel(id){ try{ if(_idb) _idbTx("readwrite").delete(id); }catch(e){} }
+
 // API keys live in sessionStorage only — cleared when the tab closes
 const skey = {
   get(k){ try { return sessionStorage.getItem(k); } catch { return null; } },
@@ -37,6 +60,7 @@ const $ = (id)=>document.getElementById(id);
 const providerSel=$("provider"), modelInp=$("model"), modelSel=$("modelSel"), keyInp=$("apikey"), keyHint=$("keyHint");
 const fetchBtn=$("fetchModels"), freeBtn=$("freeFilter"), modelStatus=$("modelStatus"), silenceInp=$("silenceSec");
 const results=$("results"), empty=$("empty"), errBox=$("error"), statusEl=$("status");
+function showError(msg){ errBox.style.display=msg?"flex":"none"; errBox.textContent = msg?("⚠ "+msg):""; }
 const dot=$("dot"), countEl=$("count");
 const homeListEl=$("homeList"), oldMetaEl=$("oldMeta"), resultsOld=$("resultsOld"),
   curTitleEl=$("curTitle"), fontRange=$("fontRange"), fontVal=$("fontVal");

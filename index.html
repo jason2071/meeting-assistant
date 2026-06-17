@@ -66,16 +66,8 @@
             <div class="seg" id="sttSeg">
               <button id="sttWeb" class="on" title="Web Speech — สด ทีละคำ (ฟรี)">สด</button>
               <button id="sttGemini" title="กดเริ่ม→พูด (เห็นสด)→กดจบ → Gemini ถอดทั้งคลิปแม่นกว่า (ใช้ Gemini key)">สด+AI แม่น</button>
-              <button id="sttLive" title="Gemini Live API — streaming realtime ถอดสดทุกคำ (ใช้ Gemini key, experimental)">เรียลไทม์</button>
             </div>
-            <select id="liveTranslate" title="โหมดเรียลไทม์: แปลสดเป็นภาษาปลายทาง (Gemini Live Translate)" style="width:auto">
-              <option value="">แปล: ปิด</option>
-              <option value="th">แปล→ไทย</option>
-              <option value="en">แปล→Eng</option>
-              <option value="ja">แปล→日本語</option>
-              <option value="zh">แปล→中文</option>
-            </select>
-            <span id="sttHint" class="mono" style="font-size:11px;color:var(--muted)">สด=ฟรี · สด+AI=Gemini ตอนจบ · เรียลไทม์=Live streaming (เลือกแปลได้)</span>
+            <span id="sttHint" class="mono" style="font-size:11px;color:var(--muted)">สด = ทีละคำ (ฟรี) · สด+AI = โชว์สดตอนพูด แล้ว Gemini ถอดแม่นตอนจบ</span>
           </div>
           <div class="row" style="gap:8px;flex-wrap:wrap">
             <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">⚡ ส่งเมื่อเงียบ</div>
@@ -184,6 +176,5 @@
 <script src="js/05-llm.js"></script>
 <script src="js/06-render.js"></script>
 <script src="js/07-main.js"></script>
-<script src="js/08-stt-live.js"></script>
 </body>
 </html>

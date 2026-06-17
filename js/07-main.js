@@ -43,11 +43,16 @@ async function submit(override){
 refreshStatus();
 
 // ── Sessions (history) + view routing ──
+// เก็บใน IndexedDB (js/02). โหลดเข้า memory map SESS ตอน init แล้วอ่าน sync; เขียน IDB fire-and-forget.
 let viewName="current", oldViewId=null, curId=store.get("ma_cur")||null, curSess=null;
-function sessIndex(){ try{ return JSON.parse(store.get("ma_sessions")||"[]"); }catch{ return []; } }
-function saveIndex(ix){ store.set("ma_sessions", JSON.stringify(ix)); }
-function loadSess(id){ try{ return JSON.parse(store.get("ma_sess_"+id)||"null"); }catch{ return null; } }
-function persistSess(s){ store.set("ma_sess_"+s.id, JSON.stringify(s)); }
+let SESS = {};   // id → session เต็ม (in-memory cache ของ IndexedDB)
+function sessIndex(){   // derive index จาก SESS (sort ใหม่→เก่า)
+  return Object.values(SESS)
+    .map(s=>({id:s.id,title:s.title,updatedAt:s.updatedAt,createdAt:s.createdAt,mode:s.mode}))
+    .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+}
+function loadSess(id){ return SESS[id] || null; }
+function persistSess(s){ SESS[s.id]=s; idbPut(s); }   // memory + IDB (fire-and-forget)
 function fmtDate(ts){ const d=new Date(ts); return d.toLocaleDateString("th-TH",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}); }
 
 function ensureSession(){
@@ -55,7 +60,6 @@ function ensureSession(){
   curId="s"+Date.now();
   curSess={ id:curId, title:"", createdAt:Date.now(), updatedAt:Date.now(), provider, model:modelInp.value, mode, items:[] };
   persistSess(curSess);
-  const ix=sessIndex(); ix.unshift({id:curId,title:"Session ใหม่",createdAt:curSess.createdAt,updatedAt:curSess.updatedAt,mode}); saveIndex(ix);
   store.set("ma_cur", curId);
 }
 function setCurTitle(t){ curTitleEl.textContent=t; curTitleEl.title=t; }
@@ -72,14 +76,11 @@ function saveItem(item){
   curSess.updatedAt=Date.now(); curSess.provider=provider; curSess.model=modelInp.value; curSess.mode=mode;
   if(!curSess.title){ curSess.title=(item.q||"").slice(0,48); setCurTitle(curSess.title); }
   persistSess(curSess);
-  const ix=sessIndex(); const e=ix.find(x=>x.id===curId);
-  if(e){ e.title=curSess.title||"Session ใหม่"; e.updatedAt=curSess.updatedAt; e.mode=mode; ix.sort((a,b)=>b.updatedAt-a.updatedAt); saveIndex(ix); }
   renderSessions();
 }
 function deleteSession(id){
   if(!confirm("ลบ session นี้? ไม่สามารถกู้คืนได้")) return;
-  store.remove("ma_sess_"+id);
-  saveIndex(sessIndex().filter(x=>x.id!==id));
+  delete SESS[id]; idbDel(id);
   if(id===curId){ curId=null; curSess=null; store.remove("ma_cur"); results.innerHTML=""; items=0; bumpCount(); setCurTitle("Session ใหม่"); }
   if(viewName==="old" && oldViewId===id){ showView("home"); }
   renderSessions();
@@ -126,8 +127,22 @@ function applyFont(px){ document.documentElement.style.setProperty("--fs", px+"p
 fontRange.value=fontPx; applyFont(fontPx);
 fontRange.oninput=()=>{ fontPx=+fontRange.value; applyFont(fontPx); store.set("ma_fontsize", fontPx); };
 
-// ── Init: always land on หน้าหลัก (settings/lobby); restore last session into memory ──
-(function initSessions(){
+// migrate session เก่าจาก localStorage (ma_sess_*) เข้า IndexedDB ครั้งเดียว (ตอน IDB ว่าง)
+function migrateFromLocalStorage(){
+  let n=0;
+  try{
+    for(const k of Object.keys(localStorage)){
+      if(!k.startsWith("ma_sess_")) continue;
+      try{ const s=JSON.parse(localStorage.getItem(k)); if(s&&s.id){ SESS[s.id]=s; idbPut(s); n++; } }catch{}
+    }
+  }catch{}
+  return n;
+}
+// ── Init (async): โหลด session จาก IndexedDB → memory; always land on หน้าหลัก ──
+(async function initSessions(){
+  await idbReady;
+  SESS = await idbGetAll();
+  if(!Object.keys(SESS).length) migrateFromLocalStorage();   // ครั้งแรก: ย้ายของเก่า
   if(curId && loadSess(curId)){
     curSess=loadSess(curId);
     setMode(curSess.mode || "qa");   // restore โหมดของ session (label/badge/composer ให้ตรง)
