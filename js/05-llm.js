@@ -2,7 +2,7 @@
 // (classic script; loaded in numeric order — top-level globals shared across files)
 
 // ── LLM call (streaming) ──
-function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024}){
+function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024, think=false}){
   if(p==="gemini"){
     const parts=[{text}];
     if(image) parts.push({inline_data:{mime_type:"image/jpeg",data:image}});
@@ -10,7 +10,8 @@ function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024}
       url:`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`,
       headers:{"Content-Type":"application/json"},
       body:{ systemInstruction:{parts:[{text:system}]}, contents:[{role:"user",parts}],
-        generationConfig:{ maxOutputTokens:maxTokens, ...(json?{responseMimeType:"application/json"}:{}) } },
+        generationConfig:{ maxOutputTokens:maxTokens, ...(think?{}:{thinkingConfig:{thinkingBudget:0}}),   // think=false → ปิด thinking
+          ...(json?{responseMimeType:"application/json"}:{}) } },
       extract:(j)=>(j.candidates?.[0]?.content?.parts||[]).map(x=>x.text||"").join(""),
       usage:(j)=>j.usageMetadata?{in:j.usageMetadata.promptTokenCount,out:j.usageMetadata.candidatesTokenCount}:null,
     };
@@ -46,6 +47,7 @@ function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024}
     // ไม่ใส่ max_tokens สำหรับ openai/openrouter — gpt-5 reasoning เผา token แล้วเหลือ output ว่าง (est ได้ JSON ว่าง),
     // และบาง model reject max_tokens (ต้อง max_completion_tokens). ปล่อยใช้ default ของ model (กว้างพอ)
     body:{ model, stream:true, stream_options:{include_usage:true}, messages:[{role:"system",content:system},{role:"user",content:userContent}],
+      ...(p==="openrouter"&&!think?{reasoning:{enabled:false}}:{}),   // OpenRouter: think=false → ปิด reasoning
       ...(json?{response_format:{type:"json_object"}}:{}) },
     extract:(j)=>j.choices?.[0]?.delta?.content||"",
     usage:(j)=>j.usage?{in:j.usage.prompt_tokens,out:j.usage.completion_tokens}:null,  // chunk ท้าย (stream_options)
@@ -101,8 +103,11 @@ async function transcribeAudioGemini(blob){
   const model=(provider==="gemini" ? modelInp.value.trim() : "") || "gemini-3-flash-preview";
   const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
   const body={ contents:[{role:"user",parts:[
-    {text:"ถอดเสียงนี้เป็นข้อความแบบ verbatim ภาษาไทยผสมศัพท์เทคนิคอังกฤษ — ถอดครบตามที่พูด ห้ามสรุป ห้ามย่อ ห้ามตัดทอน. ตอบกลับเฉพาะข้อความที่ถอดได้ล้วนๆ ไม่ต้องอธิบาย ไม่ต้องใส่ timestamp"},
-    {inline_data:{mime_type:"audio/wav",data:b64}}]}], generationConfig:{maxOutputTokens:1024} };
+    {text:"ถอดเสียงนี้เป็นข้อความแบบ verbatim ภาษาไทยผสมศัพท์เทคนิคอังกฤษ — ถอดครบตามที่พูด ห้ามสรุป ห้ามย่อ ห้ามตัดทอน. "+
+      "**ถอดเฉพาะคำที่ได้ยินจริงเท่านั้น ห้ามเดา ห้ามเติม ห้ามแต่งประโยคที่ไม่ได้พูด** โดยเฉพาะช่วงต้นและท้ายคลิปที่เสียงอาจขาด/ไม่ชัด — ถ้าช่วงไหนไม่ชัดหรือไม่มีเสียงพูดให้ข้ามไป อย่าสร้างขึ้นมาเอง. "+
+      "ตอบกลับเฉพาะข้อความที่ถอดได้ล้วนๆ ไม่ต้องอธิบาย ไม่ต้องใส่ timestamp"},
+    {inline_data:{mime_type:"audio/wav",data:b64}}]}],
+    generationConfig:{maxOutputTokens:1024, temperature:0, ...(thinkOn?{}:{thinkingConfig:{thinkingBudget:0}})} };  // temp 0 ลด hallucination; thinking ตาม toggle 🧠
   const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,200)); }
   const j=await res.json();

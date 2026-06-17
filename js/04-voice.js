@@ -23,6 +23,10 @@ function setMode(m){
 $("autoBtn").onclick=()=>{ autoSend=!autoSend; $("autoBtn").classList.toggle("on",autoSend); $("autoBtn").setAttribute("aria-pressed", String(autoSend)); };
 $("correctBtn").classList.toggle("on", correctVoice); $("correctBtn").setAttribute("aria-pressed", String(correctVoice));
 $("correctBtn").onclick=()=>{ correctVoice=!correctVoice; $("correctBtn").classList.toggle("on",correctVoice); $("correctBtn").setAttribute("aria-pressed", String(correctVoice)); store.set("ma_correct", correctVoice?"1":"0"); };
+// 🧠 thinking toggle (default ปิด)
+function applyThinkUI(){ $("thinkBtn").classList.toggle("on",thinkOn); $("thinkBtn").textContent=thinkOn?"เปิด":"ปิด"; $("thinkBtn").setAttribute("aria-pressed",String(thinkOn)); }
+$("thinkBtn").onclick=()=>{ thinkOn=!thinkOn; store.set("ma_think", thinkOn?"1":"0"); applyThinkUI(); };
+applyThinkUI();
 silenceInp.value = (silenceMs/1000).toFixed(1);
 silenceInp.onchange=()=>{
   let s=parseFloat(silenceInp.value); if(isNaN(s)) s=1.8; s=Math.min(6,Math.max(0.5,s));

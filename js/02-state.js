@@ -54,6 +54,7 @@ let voiceWrapEl = null, voiceLiveEl = null;  // qa/est: โชว์เสีย
 let busy = false;
 let silenceMs = +store.get("ma_silence") || 1800;  // auto-send delay after silence (ปรับได้, default ถามสด)
 let correctVoice = store.get("ma_correct")==="1";  // qa/est: แก้คำถอดเสียงด้วย LLM ก่อนส่ง (default ปิด)
+let thinkOn = store.get("ma_think")==="1";  // ให้ model คิดก่อนตอบ (thinking/reasoning) — default ปิด (เร็ว+ไม่กิน token)
 
 // ── DOM ──
 const $ = (id)=>document.getElementById(id);

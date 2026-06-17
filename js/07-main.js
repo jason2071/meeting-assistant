@@ -19,7 +19,7 @@ async function submit(override){
   if(mode==="qa"){
     const aiBubble=addAiMsg(); const ans=el("div","ans","▍"); aiBubble.appendChild(ans);
     try{
-      const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:900});
+      const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:4096,think:thinkOn});  // maxTokens สูงกัน thinking กิน budget; ความสั้นคุมด้วย prompt
       const full=await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); scrollBottom(); });
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
       if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}); }
@@ -28,7 +28,7 @@ async function submit(override){
     const bubble=addAiMsg();
     const load=el("div","mono","กำลังประเมิน…"); load.style.color="var(--muted)"; bubble.appendChild(load);
     try{
-      const req=buildRequest(provider,key,model,{system:EST_SYSTEM+stackLine(),text:q,image,json:true});
+      const req=buildRequest(provider,key,model,{system:EST_SYSTEM+stackLine(),text:q,image,json:true,maxTokens:4096,think:thinkOn});
       const raw=await streamLLM(req,null);
       const clean=raw.replace(/```json|```/g,"").trim();
       if(!clean || clean==="{") throw new Error("AI ตอบว่าง/ไม่เป็น JSON (อาจถูกตัดหรือ model ไม่รองรับ json mode) — ลองใหม่ หรือเปลี่ยน model");
