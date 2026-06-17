@@ -40,34 +40,28 @@ function setLang(l){ lang=l; $("thBtn").classList.toggle("on",l==="th-TH"); $("e
 let sttEngine = store.get("ma_stt")||"web";
 let recOn=false, mediaRec=null, audioChunks=[], audioStream=null;  // gemini push-to-record state
 let hybridRec=false, hybridText="";  // hybrid: Web Speech live preview ระหว่างอัด (Gemini ถอดจริงตอนจบ)
-let liveOn=false;  // Gemini Live streaming (js/08); ประกาศที่นี่ให้ setMicUI/refreshStatus เห็น
-function applySttUI(){ $("sttWeb").classList.toggle("on",sttEngine==="web"); $("sttGemini").classList.toggle("on",sttEngine==="gemini"); $("sttLive").classList.toggle("on",sttEngine==="live"); }
+function applySttUI(){ $("sttWeb").classList.toggle("on",sttEngine==="web"); $("sttGemini").classList.toggle("on",sttEngine==="gemini"); }
 function setStt(e){
-  if(micOn||paused||recOn||liveOn) return;   // กำลังฟัง/อัด ห้ามสลับ
-  if((e==="gemini"||e==="live") && !getKey("gemini")){ showError("โหมดนี้ต้องมี Gemini key — เลือก provider Gemini แล้วใส่ key ก่อน"); return; }
+  if(micOn||paused||recOn) return;   // กำลังฟัง/อัด ห้ามสลับ
+  if(e==="gemini" && !getKey("gemini")){ showError("โหมดนี้ต้องมี Gemini key — เลือก provider Gemini แล้วใส่ key ก่อน"); return; }
   sttEngine=e; store.set("ma_stt",e); applySttUI(); setMicUI();
 }
 $("sttWeb").onclick=()=>setStt("web");
 $("sttGemini").onclick=()=>setStt("gemini");
-$("sttLive").onclick=()=>setStt("live");
 applySttUI();
-// แปลสด (เฉพาะ engine=live) — persist
-$("liveTranslate").value = store.get("ma_live_tr")||"";
-$("liveTranslate").onchange=()=>{ if(liveOn){ $("liveTranslate").value=store.get("ma_live_tr")||""; return; } store.set("ma_live_tr",$("liveTranslate").value); };
 
 // ── status ── (showError ย้ายไป js/02 เพราะ fetchModels ใน js/03 เรียกตอน load ก่อน js/04)
 function refreshStatus(){
   const parts=[];
-  if(liveOn){ const tr=$("liveTranslate").value; parts.push('<span style="color:var(--red)">● เรียลไทม์ (Gemini Live'+(tr?' · แปล→'+esc(tr):'')+') — กดหยุดเพื่อจบ</span>'); }
-  else if(recOn) parts.push('<span style="color:var(--red)">● กำลังฟัง (สด+AI) — เงียบแล้วถอด+ส่งเอง</span>');
+  if(recOn) parts.push('<span style="color:var(--red)">● กำลังฟัง (สด+AI) — เงียบแล้วถอด+ส่งเอง</span>');
   else if(micOn) parts.push('<span style="color:var(--red)">● กำลังฟัง</span>');
   else if(paused) parts.push('<span style="color:var(--amber)">⏸ พักอยู่ — กด "ฟังต่อ" เพื่อฟังต่อ</span>');
   else if(stopped) parts.push('<span style="color:var(--muted)">⏹ จบการฟังแล้ว — พิมพ์ต่อได้ หรือเริ่ม session ใหม่เพื่อฟังอีก</span>');
   if(screenOn) parts.push('<span style="color:var(--teal)">🖼 AI เห็นจอด้วยทุกครั้งที่ถาม</span>');
   statusEl.innerHTML = parts.join("");
   statusEl.style.display = parts.length?"flex":"none";
-  $("ctrl").classList.toggle("active", micOn||screenOn||paused||recOn||liveOn);
-  dot.className = "dot"+((micOn||recOn||liveOn)?" live":"");
+  $("ctrl").classList.toggle("active", micOn||screenOn||paused||recOn);
+  dot.className = "dot"+((micOn||recOn)?" live":"");
 }
 // ปุ่มฟัง: idle(🎤 เริ่มฟัง) → listening(⏸ พัก + ⏹ จบ) → paused(▶ ฟังต่อ + ⏹ จบ). จบ=resume ไม่ได้, พัก=resume ได้
 function setMicUI(){
@@ -78,12 +72,6 @@ function setMicUI(){
   }
   $("micBtn").style.display=""; $("screenBtn").style.display="";
   const b=$("micBtn");
-  if(sttEngine==="live"){   // Gemini Live streaming: idle / on
-    b.className = "mic" + (liveOn?" on":"");
-    b.textContent = liveOn ? "⏹ หยุดเรียลไทม์" : "🎤 เรียลไทม์";
-    $("stopBtn").style.display="none";
-    return;
-  }
   if(sttEngine==="gemini"){   // สด+AI auto-cut: idle / ฟังต่อเนื่อง (เงียบ→ถอด+ส่งเอง)
     b.className = "mic" + (recOn?" on":"");
     b.textContent = recOn ? "⏹ หยุด" : "🎤 เริ่มฟัง";
@@ -167,7 +155,6 @@ function lockComposer(lock){ $("composer").style.display = lock?"none":""; $("ro
 function resetListen(){
   micOn=false; paused=false; stopped=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{}
   if(recOn){ recOn=false; hybridRec=false; try{mediaRec&&mediaRec.state!=="inactive"&&mediaRec.stop();}catch{} try{audioStream&&audioStream.getTracks().forEach(t=>t.stop());}catch{} hybridQ=[]; }
-  if(liveOn && typeof stopLive==="function") stopLive();
   finalText=""; clearVoicePreview(); lockComposer(false); setMicUI(); refreshStatus();
 }
 // จบ — ล้างทิ้ง + ปิดแชร์จอ + ล็อก composer (session นี้ view ได้อย่างเดียว, resume ไม่ได้)
@@ -179,7 +166,6 @@ function stopListen(){
   lockComposer(true); setMicUI(); refreshStatus();
 }
 $("micBtn").onclick=()=>{
-  if(sttEngine==="live") return toggleLive();             // Gemini Live streaming (js/08)
   if(sttEngine==="gemini") return toggleGeminiRecord();   // สด+AI auto-cut
   if(micOn) pauseListen(); else if(paused) resumeListen(); else startListen();
 };

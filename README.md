@@ -12,7 +12,6 @@
 - **🎙 ถอดเสียง: สด / สด+AI** — toggle ในตั้งค่า:
   - **สด** = Web Speech (live ทีละคำ ฟรี)
   - **สด+AI แม่น** = กดเริ่มฟังครั้งเดียว → พูดต่อเนื่อง hands-free → เงียบปุ๊บตัดประโยค → Gemini ถอดแม่น → ส่งเอง → ฟังต่อ (Web Speech โชว์สด+เป็น VAD; Gemini key; fallback ข้อความสดถ้า Gemini ล้ม; ปุ่ม ✂️ ส่งเลยได้). มี lag ~1-2 วิ/ประโยค
-  - **เรียลไทม์** (experimental) = Gemini Live API streaming (WebSocket) ถอดสดทุกคำ realtime ไม่ต้องรออัดจบ (model `gemini-3.1-flash-live-preview`, Gemini key); เลือก **แปลสด** (→ไทย/Eng/日本語/中文) ได้ผ่าน `gemini-3.5-live-translate-preview`
 - **Multi-provider** — OpenRouter, Google Gemini, OpenAI (GPT), Anthropic (Claude) — ทุกตัว vision-capable
 - **Session history** — บันทึกแต่ละ session อัตโนมัติใน **IndexedDB** (quota ใหญ่ ไม่ชน localStorage ~5MB; ของเก่าใน localStorage ย้ายเข้าให้อัตโนมัติ) เปิดดูย้อนหลังได้
 - **Custom font size** — slider ในตั้งค่า ⚙ ปรับขนาดฟอนต์คำตอบ
