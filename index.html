@@ -113,7 +113,7 @@
     box-shadow:0 0 10px rgba(45,212,191,.45); }
   #freeFilter:disabled { opacity:.4; cursor:not-allowed; }
   /* ── mode picker (หน้าหลัก) + badge (header) ── */
-  .mode-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .mode-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
   @media (max-width:560px){ .mode-grid{ grid-template-columns:1fr; } }
   .mode-card { display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left;
     background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:12px 14px;
@@ -159,20 +159,6 @@
   /* qa/est: live voice preview bubble (กำลังพูด) */
   .msg.voice-live .role { color:var(--red); }
   .msg.voice-live .bubble { opacity:.9; box-shadow:0 0 0 1px var(--red) inset; }
-  /* meeting: transcript พับเก็บ + ปุ่มสรุป */
-  .meet-transcript { background:var(--panel); border:1px solid var(--border); border-radius:14px;
-    border-bottom-left-radius:4px; max-width:100%; }
-  .meet-transcript > summary { cursor:pointer; list-style:none; padding:10px 14px; font-size:12px;
-    color:var(--muted); font-weight:600; user-select:none; }
-  .meet-transcript > summary::-webkit-details-marker { display:none; }
-  .meet-transcript > summary::before { content:"▸ "; }
-  .meet-transcript[open] > summary::before { content:"▾ "; }
-  .meet-transcript > summary:hover { color:var(--text); }
-  .meet-transcript .bubble { background:transparent; border:none; border-top:1px solid var(--border);
-    border-radius:0; font-size:13px; line-height:1.6; color:var(--muted); max-height:300px; overflow-y:auto; }
-  button.summarize { background:var(--teal); color:#06231F; border:none; border-radius:8px;
-    padding:9px 16px; font-size:13px; font-weight:700; }
-  button.summarize:hover { filter:brightness(1.1); }
   .home-hero { max-width:820px; margin:0 auto; padding:48px 16px; }
   .home-hero h2 { font-size:22px; margin:0 0 6px; }
   .home-hero p { color:var(--muted); font-size:14px; margin:0 0 20px; }
@@ -262,7 +248,6 @@
         <div id="homeModes" class="mode-grid" style="margin-bottom:14px">
           <button type="button" class="mode-card on" data-mode="qa"><span class="mc-ic">🧠</span><span class="mc-t">ถาม AI</span><span class="mc-d">ตอบสด stream</span></button>
           <button type="button" class="mode-card" data-mode="est"><span class="mc-ic">📊</span><span class="mc-t">ประเมินงาน</span><span class="mc-d">stack · เวลา · risk</span></button>
-          <button type="button" class="mode-card" data-mode="meet"><span class="mc-ic">🎙</span><span class="mc-t">ประชุม</span><span class="mc-d">อัดยาว → สรุป</span></button>
         </div>
 
         <button id="startBtn" class="newbtn transition-all hover:brightness-110 active:scale-95 shadow-md shadow-teal/30"
@@ -294,6 +279,7 @@
           <button id="enBtn">Eng</button>
         </div>
         <button id="autoBtn" class="pill on" title="ส่งอัตโนมัติหลังเงียบ" style="padding:6px 9px">⚡</button>
+        <button id="correctBtn" class="pill" title="แก้คำถอดเสียงด้วย AI ก่อนส่ง (เพิ่ม 1 LLM call)" style="padding:6px 9px">✨</button>
         <span id="count" class="mono" style="font-size:11px;color:var(--muted)">0 รายการ</span>
         <button id="clear" class="iconbtn" title="ล้างทั้งหมด" style="display:none;width:32px;height:32px">🗑</button>
       </header>
@@ -356,13 +342,11 @@ const EST_SYSTEM =
   '"breakdown":[{"task":string,"time":string}],"risks":string[]} ' +
   "totalTime เช่น '3-5 วัน' ภาษาไทยผสม term อังกฤษ ประเมินตามจริง สมมติ dev 1 คนถ้าไม่บอกเป็นอย่างอื่น";
 
-const MEET_SYSTEM =
-  "คุณเป็นผู้ช่วยสรุปประชุมทีม dev จาก transcript เสียงที่ถอดมา (อาจมี error การถอด/ไม่มีชื่อผู้พูด) " +
-  "ตอบเป็น markdown ภาษาไทยผสม technical term อังกฤษ จัดหัวข้อให้อ่านง่าย ใช้โครง: " +
-  "## สรุปสั้น (2-3 ประโยค) / ## หัวข้อ & ประเด็น (bullet) / ## การตัดสินใจ / " +
-  "## Action items (bullet — ระบุ ใคร/อะไร/กำหนด ถ้า transcript บอก ไม่บอกใส่ '-') / ## ค้างคา & ความเสี่ยง " +
-  "ยึดเนื้อหาจาก transcript เท่านั้น ห้ามแต่งเพิ่ม ถ้าหัวข้อไหนไม่มีข้อมูลให้เขียน '— ไม่พบในประชุม' " +
-  "ทีมสาย Go (Fiber v2), PostgreSQL, React+TypeScript, clean architecture.";
+const CORRECT_SYSTEM =
+  "คุณเป็นตัวแก้ข้อความถอดเสียง (ASR) ภาษาไทยปนศัพท์ technical อังกฤษ จากประชุมทีม dev " +
+  "หน้าที่: แก้คำเพี้ยน/คำผิด/ศัพท์เทคนิคที่ถอดมาผิดให้ถูกต้อง (เช่น 'เทียร์'→'tier', 'เอ็กซ์แพนคอนแทรค'→'expand-contract', 'โพสเกรส'→'PostgreSQL') " +
+  "คงความหมายและภาษาเดิมไว้ (ไทยยังเป็นไทย อังกฤษยังเป็นอังกฤษ) ห้ามเพิ่ม/ตัดเนื้อหา ห้ามสรุป ห้ามแปล ห้ามอธิบาย " +
+  "ตอบกลับเฉพาะข้อความที่แก้แล้วล้วนๆ ไม่มี markdown fence ไม่มีคำนำ/คำลงท้าย";
 
 // ── Storage helpers ──
 const store = {
@@ -390,10 +374,10 @@ let mode = "qa";
 let lang = "th-TH";
 let autoSend = true;
 let micOn = false, screenOn = false;
-let meetingOn = false, meetingText = "", meetLiveEl = null;  // โหมดประชุม: อัดยาว → สรุปทีหลัง
 let voiceWrapEl = null, voiceLiveEl = null;  // qa/est: โชว์เสียงที่ถอดเป็น bubble สดในแชท (ไม่ลง textarea)
 let busy = false;
 let silenceMs = +store.get("ma_silence") || 1800;  // auto-send delay after silence (ปรับได้, default ถามสด)
+let correctVoice = store.get("ma_correct")==="1";  // qa/est: แก้คำถอดเสียงด้วย LLM ก่อนส่ง (default ปิด)
 
 // ── DOM ──
 const $ = (id)=>document.getElementById(id);
@@ -510,7 +494,7 @@ loadProvider(provider);
 // settings อยู่หน้าหลักแล้ว ไม่มีปุ่ม gear
 
 // ── Mode (เลือกบนหน้าหลัก → ล็อกต่อ session) ──
-const MODE_LABEL = { qa:"🧠 ถาม AI", est:"📊 ประเมินงาน", meet:"🎙 ประชุม" };
+const MODE_LABEL = { qa:"🧠 ถาม AI", est:"📊 ประเมินงาน" };
 let homeMode = "qa";
 function selectHomeMode(m){
   homeMode = m;
@@ -518,23 +502,19 @@ function selectHomeMode(m){
 }
 $("homeModes").addEventListener("click",(e)=>{ const b=e.target.closest(".mode-card"); if(b) selectHomeMode(b.dataset.mode); });
 function setMode(m){
-  if(meetingOn) return;  // กำลังอัดอยู่ ห้ามสลับโหมด (จบประชุมก่อน)
   mode=m;
   $("curMode").textContent = MODE_LABEL[m] || MODE_LABEL.qa;
-  const meet = m==="meet";
-  // โหมดประชุม: mic = start/stop ประชุม; ซ่อน screen/auto (ไม่เกี่ยว)
-  $("micBtn").textContent = meet ? "🎙 เริ่มประชุม" : (micOn ? "🛑 หยุดฟัง" : "🎤 เริ่มฟัง");
-  $("screenBtn").style.display = meet ? "none" : "";
-  $("autoBtn").style.display = meet ? "none" : "";
-  $("sendBtn").textContent = meet ? "➤ แทรกโน้ต" : (m==="qa" ? "➤ ถาม" : "➤ ประเมิน");
-  $("input").placeholder = meet
-    ? "พิมพ์โน้ตเพิ่มระหว่างประชุม (optional) — Enter แทรกเข้า transcript…"
-    : (m==="qa" ? "พิมพ์ หรือพูดคำถาม… (ถ้าแชร์จอ AI จะเห็นจอด้วย)"
-                : "อธิบายงานที่อยากให้ประเมิน stack และเวลา…");
+  $("micBtn").textContent = micOn ? "🛑 หยุดฟัง" : "🎤 เริ่มฟัง";
+  $("sendBtn").textContent = m==="qa" ? "➤ ถาม" : "➤ ประเมิน";
+  $("input").placeholder = m==="qa"
+    ? "พิมพ์ หรือพูดคำถาม… (ถ้าแชร์จอ AI จะเห็นจอด้วย)"
+    : "อธิบายงานที่อยากให้ประเมิน stack และเวลา…";
 }
 
 // ── Toggles ──
 $("autoBtn").onclick=()=>{ autoSend=!autoSend; $("autoBtn").classList.toggle("on",autoSend); };
+$("correctBtn").classList.toggle("on", correctVoice);
+$("correctBtn").onclick=()=>{ correctVoice=!correctVoice; $("correctBtn").classList.toggle("on",correctVoice); store.set("ma_correct", correctVoice?"1":"0"); };
 silenceInp.value = (silenceMs/1000).toFixed(1);
 silenceInp.onchange=()=>{
   let s=parseFloat(silenceInp.value); if(isNaN(s)) s=1.8; s=Math.min(6,Math.max(0.5,s));
@@ -592,15 +572,6 @@ function buildRec(){
   const r=new SR(); r.continuous=true; r.interimResults=true; r.lang=lang;
   r.onresult=(ev)=>{
     let interim="";
-    // โหมดประชุม: สะสม final เข้า meetingText, โชว์สด, ไม่ auto-send
-    if(mode==="meet" && meetingOn){
-      for(let i=ev.resultIndex;i<ev.results.length;i++){
-        const t=ev.results[i][0].transcript;
-        if(ev.results[i].isFinal) meetingText+=t+" "; else interim+=t;
-      }
-      if(meetLiveEl){ meetLiveEl.textContent=(meetingText+interim).trim()||"(กำลังฟัง…)"; scrollBottom(); }
-      return;
-    }
     for(let i=ev.resultIndex;i<ev.results.length;i++){
       const t=ev.results[i][0].transcript;
       if(ev.results[i].isFinal) finalText+=t+" "; else interim+=t;
@@ -612,51 +583,26 @@ function buildRec(){
     }
   };
   r.onerror=(e)=>{ if(e.error==="not-allowed") showError("ไม่ได้รับอนุญาตให้ใช้ไมค์ — เปิดสิทธิ์ใน browser ก่อน"); };
-  r.onend=()=>{ if((micOn||meetingOn) && !processing){ try{r.start();}catch{} } };
+  r.onend=()=>{ if(micOn && !processing){ try{r.start();}catch{} } };
   return r;
 }
 function startRec(){ if(!rec) rec=buildRec(); if(!rec){ $("supportWarn").style.display="flex"; return; } rec.lang=lang; try{rec.start();}catch{} }
 $("micBtn").onclick=()=>{
-  if(mode==="meet"){ toggleMeeting(); return; }   // โหมดประชุม: mic = start/stop ประชุม
   if(micOn){ micOn=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} finalText=""; clearVoicePreview(); $("micBtn").className="mic"; $("micBtn").textContent="🎤 เริ่มฟัง"; refreshStatus(); }
   else { showError(""); finalText=""; $("input").value=""; micOn=true; $("micBtn").className="mic on"; $("micBtn").textContent="🛑 หยุดฟัง"; startRec(); refreshStatus(); }
 };
 
-// ── โหมดประชุม: อัดยาว → สรุปทีหลัง ──
-function toggleMeeting(){
-  if(!SR){ $("supportWarn").style.display="flex"; return; }
-  if(meetingOn){  // จบประชุม
-    meetingOn=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{}
-    $("micBtn").className="mic"; $("micBtn").textContent="🎙 เริ่มประชุม";
-    meetLiveEl=null; refreshStatus();
-    const text=meetingText.trim();
-    if(meetWrapEl){ meetWrapEl.remove(); meetWrapEl=null; }
-    if(text){
-      const item={mode:"meet", q:text.slice(0,80), transcript:text, summary:null, hadImage:false};
-      saveItem(item);  // เก็บทันที → สรุปทีหลังได้
-      renderMeetingItem(results, item, curSess.items.length-1, true);
-      scrollBottom();
-    } else { items=Math.max(0,items-1); bumpCount(); }  // ไม่มีเนื้อหา → ยกเลิก
-  } else {  // เริ่มประชุม
-    showError(""); meetingText=""; meetingOn=true;
-    $("micBtn").className="mic on"; $("micBtn").textContent="⏹ จบประชุม";
-    startMeetingLive(); startRec(); refreshStatus();
-  }
-}
-let meetWrapEl=null;
-function startMeetingLive(){
-  const m=el("div","msg user"); meetWrapEl=m;
-  m.appendChild(el("div","role","🎙 ประชุม (กำลังอัด…)"));
-  meetLiveEl=el("div","bubble","(กำลังฟัง…)"); meetLiveEl.style.whiteSpace="pre-wrap";
-  m.appendChild(meetLiveEl);
-  results.appendChild(m); items++; bumpCount(); scrollBottom();
-}
 async function voiceSend(){
   const text=finalText.trim();
   if(!text||processing) return;
   processing=true; clearTimeout(silenceTimer); finalText="";
   try{rec&&rec.stop();}catch{}
-  await submit(text);
+  let toSend=text;
+  if(correctVoice){  // แก้คำถอดเสียงด้วย LLM ก่อนส่ง (toggle ✨)
+    if(voiceLiveEl) voiceLiveEl.textContent="✨ กำลังแก้คำ…";
+    try{ toSend=await correctText(text); }catch{ toSend=text; }
+  }
+  await submit(toSend);
   processing=false;
   if(micOn) startRec();
 }
@@ -794,7 +740,7 @@ function mdToHtml(src){
 }
 
 // ── chat bubbles ──
-// qa/est: ฝั่งพูด/ถาม = "คนถาม" (คนบอก detail งาน ไม่ใช่ฉัน/operator); AI ตอบ. meeting ใช้ label ของตัวเอง
+// qa/est: ฝั่งพูด/ถาม = "คนถาม" (คนบอก detail งาน ไม่ใช่ฉัน/operator); AI ตอบ
 function roleLabel(who){ return el("div","role", who==="user"?"🗣 คนถาม":"🤖 AI"); }
 function addUserMsg(q, hadImage){
   const m=el("div","msg user");
@@ -828,9 +774,7 @@ function clearVoicePreview(){ if(voiceWrapEl){ voiceWrapEl.remove(); } voiceWrap
 // rebuild saved messages into a container (chronological, readonly)
 function renderSessionInto(container, sess){
   container.innerHTML="";
-  const editable = container===results;  // current view เท่านั้นที่กดสรุปได้
-  (sess.items||[]).forEach((it,idx)=>{
-    if(it.mode==="meet"){ renderMeetingItem(container, it, idx, editable); return; }
+  (sess.items||[]).forEach((it)=>{
     const u=el("div","msg user"); u.appendChild(roleLabel("user")); u.appendChild(el("div","bubble",esc(it.q)));
     if(it.hadImage) u.appendChild(el("div","meta","🖼 เห็นจอ"));
     container.appendChild(u);
@@ -870,45 +814,6 @@ function renderEstimate(card, e){
   card.appendChild(body);
 }
 
-// ── โหมดประชุม: render transcript (collapsible) + สรุป/ปุ่มสรุป ──
-function renderMeetingItem(container, item, idx, editable){
-  // transcript (ฝั่งซ้าย, พับเก็บได้)
-  const u=el("div","msg user"); u.appendChild(el("div","role","🎙 ประชุม"));
-  const det=el("details","meet-transcript");
-  det.appendChild(el("summary",null,`📄 transcript (${(item.transcript||"").length} ตัวอักษร)`));
-  const body=el("div","bubble"); body.style.whiteSpace="pre-wrap"; body.textContent=item.transcript||"";
-  det.appendChild(body); u.appendChild(det); container.appendChild(u);
-  // สรุป (ฝั่ง AI) หรือปุ่มสรุป
-  const m=el("div","msg ai"); m.appendChild(el("div","role","🤖 สรุปประชุม"));
-  const b=el("div","bubble"); m.appendChild(b);
-  if(item.summary){ b.appendChild(el("div","ans",mdToHtml(item.summary))); }
-  else if(editable){ const btn=el("button","summarize","📝 สรุปประชุม"); btn.dataset.idx=String(idx); b.appendChild(btn); }
-  else { const n=el("div","mono","— ยังไม่ได้สรุป"); n.style.color="var(--muted)"; b.appendChild(n); }
-  container.appendChild(m);
-}
-async function summarizeMeeting(item, bubble){
-  const key=keyInp.value.trim(), model=modelInp.value.trim();
-  if(!key){ showError("ยังไม่ได้ใส่ API key — กลับไปตั้งค่าที่หน้าหลัก"); return; }
-  if(busy) return; busy=true; showError("");
-  bubble.innerHTML=""; const ans=el("div","ans","▍"); bubble.appendChild(ans);
-  try{
-    const req=buildRequest(provider,key,model,{system:MEET_SYSTEM, text:item.transcript, image:null, json:false, maxTokens:2048});
-    const full=await streamLLM(req,(f)=>{ ans.innerHTML=mdToHtml(f); scrollBottom(); });
-    if(full && full.trim()){ item.summary=full; if(curSess) persistSess(curSess); }
-    else ans.textContent="(ไม่มีสรุป)";
-  }catch(e){
-    bubble.innerHTML=""; const a=el("div","ans"); a.appendChild(el("span","warn","⚠ "+esc(e.message))); bubble.appendChild(a);
-    const btn=el("button","summarize","📝 ลองสรุปอีกครั้ง"); btn.dataset.idx=String(curSess?curSess.items.indexOf(item):-1); bubble.appendChild(btn);
-  }
-  busy=false; scrollBottom();
-}
-// คลิกปุ่มสรุป (delegated — รอดข้าม re-render)
-results.addEventListener("click",(e)=>{
-  const sb=e.target.closest(".summarize"); if(!sb) return;
-  const idx=+sb.dataset.idx; const item=curSess && curSess.items[idx];
-  if(item) summarizeMeeting(item, sb.closest(".bubble"));
-});
-
 // แปลง JSON ที่ LLM ตอบมาแบบหลวมๆ — ลองซ่อมทีละชั้น (parse strict ก่อน แล้วค่อยซ่อมสะสม)
 function looseJSON(s){
   const a=s.indexOf("{"), b=s.lastIndexOf("}");
@@ -926,6 +831,16 @@ function looseJSON(s){
     try{ return JSON.parse(cur); }catch(e){ err=e; }
   }
   throw err;  // ซ่อมไม่ได้ → โยน error ล่าสุดให้เห็น
+}
+
+// LLM post-correction: แก้ ASR ไทยปนศัพท์อังกฤษให้ตรงขึ้น (ใช้ provider/key เดิม) — คืน text เดิมถ้าไม่มี key/ว่าง
+async function correctText(text){
+  const key=keyInp.value.trim(), model=modelInp.value.trim();
+  if(!key || !text.trim()) return text;
+  const maxTokens=Math.min(8192, Math.max(1024, text.length));  // output ≈ ยาวเท่า input → กัน truncate
+  const req=buildRequest(provider,key,model,{system:CORRECT_SYSTEM, text, image:null, json:false, maxTokens});
+  const out=await streamLLM(req,null);
+  return (out||"").trim() || text;
 }
 
 // ── Submit ──

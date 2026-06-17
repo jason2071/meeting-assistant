@@ -8,7 +8,7 @@
 - **🖥 แชร์จอ** — แนบภาพหน้าจอไปกับคำถาม ให้ AI อ่าน error / code / diagram / ตาราง ประกอบ
 - **🧠 ถาม AI** — ตอบสดแบบ stream token-by-token
 - **📊 ประเมินงาน** — ป้อนงาน → ได้ผลเป็น JSON (สรุป, stack, เวลารวม, breakdown, ความเสี่ยง)
-- **🎙 ประชุม** — อัดประชุมยาว (กด start/stop เอง) ถอดเสียงสะสมเป็น transcript เดียว โชว์สด → กด **สรุปประชุม** ทีหลังได้ → AI สรุป + action items. v1 ไม่แยกผู้พูด (เสียงทุกคนรวมสายเดียว)
+- **✨ แก้คำถอดเสียง (option)** — toggle ใน header; เปิดแล้วเสียงที่ถอดจะถูก LLM แก้คำเพี้ยน/ศัพท์เทคนิคก่อนส่ง (ไทยปนอังกฤษแม่นขึ้น) — เพิ่ม 1 LLM call, default ปิด
 - **Multi-provider** — OpenRouter, Google Gemini, OpenAI (GPT), Anthropic (Claude) — ทุกตัว vision-capable
 - **Session history** — บันทึกแต่ละ session อัตโนมัติ (localStorage) เปิดดูย้อนหลังได้
 - **Custom font size** — slider ในตั้งค่า ⚙ ปรับขนาดฟอนต์คำตอบ
@@ -16,8 +16,8 @@
 ## Layout
 
 **3 view (lobby → chat)** ไม่มี sidebar/navbar — แต่งด้วย Tailwind:
-- **หน้าหลัก / lobby** (`#viewHome`) — settings (provider/model/key/silence/font) + ปุ่ม **▶ เริ่มแชท** + ประวัติ session (คลิกเปิด, × ลบ มี confirm)
-- **current session** (`#viewCurrent`) — แสดงแบบ **chat**: user bubble ขวา (teal), AI ซ้าย (markdown/code), composer ติดล่าง (mic/screen/auto/lang + input); header มีปุ่ม ← หน้าหลัก
+- **หน้าหลัก / lobby** (`#viewHome`) — settings (provider/model/key/silence/font) + **เลือกโหมด** (ถาม AI / ประเมินงาน) + ปุ่ม **▶ เริ่ม session** + ประวัติ session (badge บอกโหมด, คลิกเปิด, × ลบ มี confirm)
+- **current session** (`#viewCurrent`) — แสดงแบบ **chat**: bubble ชิดซ้ายหมด มี role label (🗣 คนถาม teal / 🤖 AI), composer ติดล่าง (mic/screen + input); header มี ← หน้าหลัก + badge โหมด + ไทย/Eng + ⚡ + ✨
 - **session เก่า** (`#viewOld`) — chat ย้อนหลัง readonly + ปุ่มกลับ
 
 **หน้าหลัก = default** ตอนเปิดแอป (ตั้งค่าก่อนเริ่ม); current auto-save ต่อเนื่อง; เริ่มแชท = session ใหม่; reload → กลับหน้าหลัก (session เดิมอยู่ในประวัติ คลิกเปิดต่อได้). settings อยู่หน้าหลักที่เดียว (ในแชทกด ← หน้าหลักไปแก้)
@@ -36,10 +36,9 @@ python3 -m http.server 8000
 > ต้องใช้ **Chrome / Edge** — `SpeechRecognition` (ฟังเสียง) ไม่รองรับบน Firefox/Safari ส่วน text input ใช้ได้ทุกเบราว์เซอร์
 
 1. กด ⚙ → เลือก **provider** + ใส่ **API key** → เลือก **model** (กด ↻ ดึงรายชื่อ model จริงจาก provider มาเลือก, ปุ่ม Free กรองเฉพาะตัวฟรี)
-2. เลือกโหมด **🧠 ถาม AI** / **📊 ประเมินงาน** / **🎙 ประชุม** บนหน้าหลัก **ก่อนกดเริ่ม** — โหมดล็อกต่อ session (อยากเปลี่ยนโหมด = กลับหน้าหลักเริ่ม session ใหม่; ไม่มี tab สลับในแชท). header ในแชทมี badge บอกโหมดปัจจุบัน
-3. พิมพ์ หรือกด 🎤 เริ่มฟัง / 🖥 แชร์จอ แล้วถามได้เลย (`⌘/Ctrl + Enter` เพื่อส่ง)
-4. โหมด **🎙 ประชุม**: กด **🎙 เริ่มประชุม** → ถอดเสียงสะสม (โชว์สด) → กด **⏹ จบประชุม** → กด **📝 สรุปประชุม** เมื่อไหร่ก็ได้ (transcript ถูกบันทึกใน session แล้ว สรุปทีหลังได้)
-   - ไม่แยกเสียงเรา/คนอื่น — อยากได้ speaker label (mic=เรา, Meet=เขา) ต้องเปลี่ยน engine เป็น cloud STT ที่มี diarization (เช่น Deepgram multichannel) = งานอนาคต
+2. เลือกโหมด **🧠 ถาม AI** / **📊 ประเมินงาน** บนหน้าหลัก **ก่อนกดเริ่ม** — โหมดล็อกต่อ session (อยากเปลี่ยนโหมด = กลับหน้าหลักเริ่ม session ใหม่; ไม่มี tab สลับในแชท). header ในแชทมี badge บอกโหมดปัจจุบัน
+3. พิมพ์ หรือกด 🎤 เริ่มฟัง / 🖥 แชร์จอ แล้วถามได้เลย (`⌘/Ctrl + Enter` เพื่อส่ง) — เสียงที่ถอดโชว์เป็น bubble สดในแชท
+   - เปิด **✨** ใน header ถ้าอยากให้ LLM แก้คำถอดเสียงก่อนส่ง (ไทยปนศัพท์ dev แม่นขึ้น)
 
 ## ถอดเสียงประชุม (system audio) — macOS + BlackHole
 
