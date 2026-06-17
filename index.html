@@ -951,7 +951,7 @@ function ensureSession(){
   curId="s"+Date.now();
   curSess={ id:curId, title:"", createdAt:Date.now(), updatedAt:Date.now(), provider, model:modelInp.value, mode, items:[] };
   persistSess(curSess);
-  const ix=sessIndex(); ix.unshift({id:curId,title:"Session ใหม่",createdAt:curSess.createdAt,updatedAt:curSess.updatedAt}); saveIndex(ix);
+  const ix=sessIndex(); ix.unshift({id:curId,title:"Session ใหม่",createdAt:curSess.createdAt,updatedAt:curSess.updatedAt,mode}); saveIndex(ix);
   store.set("ma_cur", curId);
 }
 function setCurTitle(t){ curTitleEl.textContent=t; curTitleEl.title=t; }
@@ -968,7 +968,7 @@ function saveItem(item){
   if(!curSess.title){ curSess.title=(item.q||"").slice(0,48); setCurTitle(curSess.title); }
   persistSess(curSess);
   const ix=sessIndex(); const e=ix.find(x=>x.id===curId);
-  if(e){ e.title=curSess.title||"Session ใหม่"; e.updatedAt=curSess.updatedAt; ix.sort((a,b)=>b.updatedAt-a.updatedAt); saveIndex(ix); }
+  if(e){ e.title=curSess.title||"Session ใหม่"; e.updatedAt=curSess.updatedAt; e.mode=mode; ix.sort((a,b)=>b.updatedAt-a.updatedAt); saveIndex(ix); }
   renderSessions();
 }
 function deleteSession(id){
@@ -982,7 +982,10 @@ function deleteSession(id){
 function renderSessions(){
   const ix=sessIndex();
   homeListEl.innerHTML = ix.length
-    ? ix.map(s=>`<div class="home-card transition-all hover:-translate-y-0.5 hover:shadow-xl" data-id="${s.id}"><div class="t">${esc(s.title||"Session ใหม่")}</div><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}" aria-label="ลบ session ${esc(s.title||"Session ใหม่")}">✕</button></div>`).join("")
+    ? ix.map(s=>{
+        const md=s.mode || (loadSess(s.id)||{}).mode || "qa";   // fallback ให้ session เก่าที่ index ยังไม่มี mode
+        return `<div class="home-card transition-all hover:-translate-y-0.5 hover:shadow-xl" data-id="${s.id}"><span class="m mode-badge">${esc(MODE_LABEL[md]||MODE_LABEL.qa)}</span><div class="t">${esc(s.title||"Session ใหม่")}</div><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}" aria-label="ลบ session ${esc(s.title||"Session ใหม่")}">✕</button></div>`;
+      }).join("")
     : `<div class="side-empty">ยังไม่มี session — กดเริ่มใหม่</div>`;
 }
 function showView(name){
