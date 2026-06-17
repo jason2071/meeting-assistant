@@ -156,6 +156,9 @@
     white-space:pre-wrap; font-size:var(--fs); line-height:1.55; }
   .msg.ai .bubble { background:var(--panel); border:1px solid var(--border); border-bottom-left-radius:4px; }
   .msg .meta { font-size:10px; color:var(--muted); margin:3px 4px 0; }
+  /* qa/est: live voice preview bubble (กำลังพูด) */
+  .msg.voice-live .role { color:var(--red); }
+  .msg.voice-live .bubble { opacity:.9; box-shadow:0 0 0 1px var(--red) inset; }
   /* meeting: transcript พับเก็บ + ปุ่มสรุป */
   .meet-transcript { background:var(--panel); border:1px solid var(--border); border-radius:14px;
     border-bottom-left-radius:4px; max-width:100%; }
@@ -388,6 +391,7 @@ let lang = "th-TH";
 let autoSend = true;
 let micOn = false, screenOn = false;
 let meetingOn = false, meetingText = "", meetLiveEl = null;  // โหมดประชุม: อัดยาว → สรุปทีหลัง
+let voiceWrapEl = null, voiceLiveEl = null;  // qa/est: โชว์เสียงที่ถอดเป็น bubble สดในแชท (ไม่ลง textarea)
 let busy = false;
 let silenceMs = +store.get("ma_silence") || 1800;  // auto-send delay after silence (ปรับได้, default ถามสด)
 
@@ -601,7 +605,7 @@ function buildRec(){
       const t=ev.results[i][0].transcript;
       if(ev.results[i].isFinal) finalText+=t+" "; else interim+=t;
     }
-    $("input").value=(finalText+interim).trim();
+    updateVoicePreview(finalText+interim);   // โชว์ในแชทสดๆ ไม่ลง textarea
     if(autoSend && finalText.trim()){
       clearTimeout(silenceTimer);
       silenceTimer=setTimeout(voiceSend,silenceMs);
@@ -614,7 +618,7 @@ function buildRec(){
 function startRec(){ if(!rec) rec=buildRec(); if(!rec){ $("supportWarn").style.display="flex"; return; } rec.lang=lang; try{rec.start();}catch{} }
 $("micBtn").onclick=()=>{
   if(mode==="meet"){ toggleMeeting(); return; }   // โหมดประชุม: mic = start/stop ประชุม
-  if(micOn){ micOn=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} $("micBtn").className="mic"; $("micBtn").textContent="🎤 เริ่มฟัง"; refreshStatus(); }
+  if(micOn){ micOn=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} finalText=""; clearVoicePreview(); $("micBtn").className="mic"; $("micBtn").textContent="🎤 เริ่มฟัง"; refreshStatus(); }
   else { showError(""); finalText=""; $("input").value=""; micOn=true; $("micBtn").className="mic on"; $("micBtn").textContent="🛑 หยุดฟัง"; startRec(); refreshStatus(); }
 };
 
@@ -740,7 +744,7 @@ function bumpCount(){
   }
 }
 function scrollBottom(){ results.scrollTop = results.scrollHeight; }
-$("clear").onclick=()=>{ results.innerHTML=""; items=0; bumpCount(); if(curSess){ curSess.items=[]; persistSess(curSess); renderSessions(); } };
+$("clear").onclick=()=>{ results.innerHTML=""; clearVoicePreview(); items=0; bumpCount(); if(curSess){ curSess.items=[]; persistSess(curSess); renderSessions(); } };
 // copy code blocks (delegated — survives stream re-renders)
 results.addEventListener("click",(e)=>{
   const btn=e.target.closest(".codecopy"); if(!btn) return;
@@ -806,6 +810,20 @@ function addAiMsg(){
   results.appendChild(m); scrollBottom();
   return b; // bubble content element (stream/estimate target)
 }
+// qa/est: live preview ของเสียงที่กำลังถอด — โชว์เป็น bubble ในแชท (ไม่ลง textarea); หายตอน submit/clear
+function updateVoicePreview(txt){
+  txt=(txt||"").trim();
+  if(!txt){ clearVoicePreview(); return; }
+  if(!voiceWrapEl){
+    voiceWrapEl=el("div","msg user voice-live");
+    voiceWrapEl.appendChild(el("div","role","🧑 คุณ (กำลังพูด…)"));
+    voiceLiveEl=el("div","bubble"); voiceLiveEl.style.whiteSpace="pre-wrap";
+    voiceWrapEl.appendChild(voiceLiveEl);
+    results.appendChild(voiceWrapEl);
+  }
+  voiceLiveEl.textContent=txt; scrollBottom();
+}
+function clearVoicePreview(){ if(voiceWrapEl){ voiceWrapEl.remove(); } voiceWrapEl=null; voiceLiveEl=null; }
 // rebuild saved messages into a container (chronological, readonly)
 function renderSessionInto(container, sess){
   container.innerHTML="";
@@ -904,11 +922,12 @@ $("input").addEventListener("keydown",(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key===
 $("input").addEventListener("input",()=>{ const v=$("input").value.trim(); $("sendBtn").classList.toggle("ready",!!v&&!busy); });
 
 async function submit(override){
-  const q=(override??$("input").value).trim();
+  // เสียง qa/est อยู่ใน finalText (ไม่ใช่ textarea) → ถ้าพิมพ์ใช้ค่าจาก textarea ก่อน ไม่งั้น fallback เสียง
+  const q=(override!=null ? override : ($("input").value.trim() || finalText)).trim();
   if(!q||busy) return;
   const key=keyInp.value.trim(), model=modelInp.value.trim();
   if(!key){ showError("ยังไม่ได้ใส่ API key — กลับไปตั้งค่าที่หน้าหลัก"); return; }
-  busy=true; showError(""); $("input").value=""; finalText=""; $("sendBtn").classList.remove("ready");
+  busy=true; showError(""); $("input").value=""; finalText=""; clearVoicePreview(); $("sendBtn").classList.remove("ready");
   const image = screenOn ? captureFrame() : null;
   addUserMsg(q, !!image);
 
@@ -957,7 +976,7 @@ function ensureSession(){
 function setCurTitle(t){ curTitleEl.textContent=t; curTitleEl.title=t; }
 function newSession(){
   curId=null; curSess=null; ensureSession();
-  results.innerHTML=""; items=0; bumpCount();
+  results.innerHTML=""; clearVoicePreview(); items=0; bumpCount();
   setCurTitle("Session ใหม่");
   renderSessions(); showView("current");
 }
