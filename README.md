@@ -14,13 +14,12 @@
 
 ## Layout
 
-**sidebar + 3 view** (แต่งด้วย Tailwind):
-- **Sidebar** — ชื่อแอป, **＋ New**, list session ย้อนหลัง (วันที่ + × ลบ มี confirm), 🏠 หน้าหลัก
-- **หน้าหลัก** (`#viewHome`) — welcome + รายการ session
-- **current session** (`#viewCurrent`) — UI ใช้งานสด
-- **session เก่า** (`#viewOld`) — readonly Q&A ที่บันทึก + meta + ปุ่มกลับ
+**3 view (lobby → chat)** ไม่มี sidebar/navbar — แต่งด้วย Tailwind:
+- **หน้าหลัก / lobby** (`#viewHome`) — settings (provider/model/key/silence/font) + ปุ่ม **▶ เริ่มแชท** + ประวัติ session (คลิกเปิด, × ลบ มี confirm)
+- **current session** (`#viewCurrent`) — แสดงแบบ **chat**: user bubble ขวา (teal), AI ซ้าย (markdown/code), composer ติดล่าง (mic/screen/auto/lang + input); header มีปุ่ม ← หน้าหลัก
+- **session เก่า** (`#viewOld`) — chat ย้อนหลัง readonly + ปุ่มกลับ
 
-current auto-save ต่อเนื่อง; ＋New ขึ้น session ใหม่; reload restore session ล่าสุด
+**หน้าหลัก = default** ตอนเปิดแอป (ตั้งค่าก่อนเริ่ม); current auto-save ต่อเนื่อง; เริ่มแชท = session ใหม่; reload → กลับหน้าหลัก (session เดิมอยู่ในประวัติ คลิกเปิดต่อได้). settings อยู่หน้าหลักที่เดียว (ในแชทกด ← หน้าหลักไปแก้)
 
 **Tailwind** มาจาก [Play CDN](https://cdn.tailwindcss.com) (`corePlugins.preflight:false` กัน reset ทับ CSS เดิม) — ต้องต่อเน็ตตอนโหลดหน้า
 
