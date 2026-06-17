@@ -35,29 +35,36 @@ function setLang(l){ lang=l; $("thBtn").classList.toggle("on",l==="th-TH"); $("e
 // ── STT engine: web (Web Speech, live ทีละคำ) | gemini (batch push-to-record, แม่นกว่า) ──
 let sttEngine = store.get("ma_stt")||"web";
 let recOn=false, mediaRec=null, audioChunks=[], audioStream=null;  // gemini push-to-record state
-function applySttUI(){ $("sttWeb").classList.toggle("on",sttEngine==="web"); $("sttGemini").classList.toggle("on",sttEngine==="gemini"); }
+let hybridRec=false, hybridText="";  // hybrid: Web Speech live preview ระหว่างอัด (Gemini ถอดจริงตอนจบ)
+let liveOn=false;  // Gemini Live API streaming (js/08-stt-live.js เป็นคนจัดการ; ประกาศที่นี่ให้ setMicUI/refreshStatus เห็น)
+function applySttUI(){ $("sttWeb").classList.toggle("on",sttEngine==="web"); $("sttGemini").classList.toggle("on",sttEngine==="gemini"); $("sttLive").classList.toggle("on",sttEngine==="live"); }
 function setStt(e){
-  if(micOn||paused||recOn) return;   // กำลังฟัง/อัด ห้ามสลับ
-  if(e==="gemini" && !getKey("gemini")){ showError("โหมด AI ต้องมี Gemini key — เลือก provider Gemini แล้วใส่ key ก่อน"); return; }
+  if(micOn||paused||recOn||liveOn) return;   // กำลังฟัง/อัด ห้ามสลับ
+  if((e==="gemini"||e==="live") && !getKey("gemini")){ showError("โหมดนี้ต้องมี Gemini key — เลือก provider Gemini แล้วใส่ key ก่อน"); return; }
   sttEngine=e; store.set("ma_stt",e); applySttUI(); setMicUI();
 }
 $("sttWeb").onclick=()=>setStt("web");
 $("sttGemini").onclick=()=>setStt("gemini");
+$("sttLive").onclick=()=>setStt("live");
 applySttUI();
+// แปลสด (ใช้เฉพาะ engine=live) — persist
+$("liveTranslate").value = store.get("ma_live_tr")||"";
+$("liveTranslate").onchange=()=>{ if(liveOn){ $("liveTranslate").value=store.get("ma_live_tr")||""; return; } store.set("ma_live_tr",$("liveTranslate").value); };
 
 // ── Error / status ──
 function showError(msg){ errBox.style.display=msg?"flex":"none"; errBox.textContent = msg?("⚠ "+msg):""; }
 function refreshStatus(){
   const parts=[];
-  if(recOn) parts.push('<span style="color:var(--red)">● กำลังอัด… กด "ถอดเสียง" เพื่อจบ</span>');
+  if(liveOn){ const tr=$("liveTranslate").value; parts.push('<span style="color:var(--red)">● เรียลไทม์ (Gemini Live'+(tr?' · แปล→'+esc(tr):'')+') — กดหยุดเพื่อจบ</span>'); }
+  else if(recOn) parts.push('<span style="color:var(--red)">● กำลังฟัง (สด) — กดจบเพื่อถอดด้วย AI</span>');
   else if(micOn) parts.push('<span style="color:var(--red)">● กำลังฟัง</span>');
   else if(paused) parts.push('<span style="color:var(--amber)">⏸ พักอยู่ — กด "ฟังต่อ" เพื่อฟังต่อ</span>');
   else if(stopped) parts.push('<span style="color:var(--muted)">⏹ จบการฟังแล้ว — พิมพ์ต่อได้ หรือเริ่ม session ใหม่เพื่อฟังอีก</span>');
   if(screenOn) parts.push('<span style="color:var(--teal)">🖼 AI เห็นจอด้วยทุกครั้งที่ถาม</span>');
   statusEl.innerHTML = parts.join("");
   statusEl.style.display = parts.length?"flex":"none";
-  $("ctrl").classList.toggle("active", micOn||screenOn||paused||recOn);
-  dot.className = "dot"+((micOn||recOn)?" live":"");
+  $("ctrl").classList.toggle("active", micOn||screenOn||paused||recOn||liveOn);
+  dot.className = "dot"+((micOn||recOn||liveOn)?" live":"");
 }
 // ปุ่มฟัง: idle(🎤 เริ่มฟัง) → listening(⏸ พัก + ⏹ จบ) → paused(▶ ฟังต่อ + ⏹ จบ). จบ=resume ไม่ได้, พัก=resume ได้
 function setMicUI(){
@@ -68,9 +75,15 @@ function setMicUI(){
   }
   $("micBtn").style.display=""; $("screenBtn").style.display="";
   const b=$("micBtn");
-  if(sttEngine==="gemini"){   // push-to-record: idle / recording (ไม่มี pause/stop)
+  if(sttEngine==="live"){   // Gemini Live streaming: idle / on
+    b.className = "mic" + (liveOn?" on":"");
+    b.textContent = liveOn ? "⏹ หยุดเรียลไทม์" : "🎤 เรียลไทม์";
+    $("stopBtn").style.display="none";
+    return;
+  }
+  if(sttEngine==="gemini"){   // hybrid push-to-record: idle / recording (โชว์สด + Gemini ถอดตอนจบ)
     b.className = "mic" + (recOn?" on":"");
-    b.textContent = recOn ? "⏹ ถอดเสียง" : "🎤 เริ่มอัด";
+    b.textContent = recOn ? "⏹ ถอด+ส่ง" : "🎤 เริ่มพูด";
     $("stopBtn").style.display="none";
     return;
   }
@@ -115,6 +128,15 @@ function buildRec(){
   const r=new SR(); r.continuous=true; r.interimResults=true; r.lang=lang;
   r.onresult=(ev)=>{
     let interim="";
+    // hybrid (gemini mode): Web Speech ใช้โชว์สดอย่างเดียว — ไม่ autosend, ไม่ใช้เป็นคำถามจริง (Gemini ถอดตอนจบ)
+    if(hybridRec){
+      for(let i=ev.resultIndex;i<ev.results.length;i++){
+        const t=ev.results[i][0].transcript;
+        if(ev.results[i].isFinal) hybridText+=t+" "; else interim+=t;
+      }
+      updateVoicePreview((hybridText+interim).trim()||"(กำลังฟัง…)");
+      return;
+    }
     for(let i=ev.resultIndex;i<ev.results.length;i++){
       const t=ev.results[i][0].transcript;
       if(ev.results[i].isFinal) finalText+=t+" "; else interim+=t;
@@ -126,7 +148,7 @@ function buildRec(){
     }
   };
   r.onerror=(e)=>{ if(e.error==="not-allowed") showError("ไมค์ถูกบล็อก — เปิดสิทธิ์ใน browser แล้วรีโหลด"); };
-  r.onend=()=>{ if(micOn && !processing){ try{r.start();}catch{} } };
+  r.onend=()=>{ if((micOn||hybridRec) && !processing){ try{r.start();}catch{} } };
   return r;
 }
 function startRec(){ if(!rec) rec=buildRec(); if(!rec){ $("supportWarn").style.display="flex"; return; } rec.lang=lang; try{rec.start();}catch{} }
@@ -136,7 +158,7 @@ function resumeListen(){ showError(""); micOn=true; paused=false; startRec(); se
 // ล็อก/ปลดล็อก composer (stop → session view ได้อย่างเดียว)
 function lockComposer(lock){ $("composer").style.display = lock?"none":""; $("roNote").style.display = lock?"block":"none"; }
 // reset → กลับ idle (ปุ่ม+composer กลับมา) ใช้ตอนเริ่ม session ใหม่
-function resetListen(){ micOn=false; paused=false; stopped=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} finalText=""; clearVoicePreview(); lockComposer(false); setMicUI(); refreshStatus(); }
+function resetListen(){ micOn=false; paused=false; stopped=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} if(liveOn && typeof stopLive==="function") stopLive(); finalText=""; clearVoicePreview(); lockComposer(false); setMicUI(); refreshStatus(); }
 // จบ — ล้างทิ้ง + ปิดแชร์จอ + ล็อก composer (session นี้ view ได้อย่างเดียว, resume ไม่ได้)
 function stopListen(){
   micOn=false; paused=false; stopped=true; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{}
@@ -146,34 +168,41 @@ function stopListen(){
   lockComposer(true); setMicUI(); refreshStatus();
 }
 $("micBtn").onclick=()=>{
+  if(sttEngine==="live") return toggleLive();             // Gemini Live streaming (js/08)
   if(sttEngine==="gemini") return toggleGeminiRecord();   // push-to-record (Gemini batch STT)
   if(micOn) pauseListen(); else if(paused) resumeListen(); else startListen();
 };
 $("stopBtn").onclick=stopListen;
 
-// ── Gemini push-to-record: กดเริ่ม → อัด → กดจบ → ถอดด้วย Gemini → preview → (auto-send หรือรอกดส่ง) ──
+// ── Hybrid (gemini mode): Web Speech โชว์สดระหว่างอัด + Gemini ถอด clip จริงตอนจบ (สด+แม่น) ──
 async function toggleGeminiRecord(){
-  if(recOn){ recOn=false; try{ mediaRec && mediaRec.stop(); }catch{} setMicUI(); refreshStatus(); return; }  // onstop จะถอดต่อ
+  if(recOn){  // จบ → หยุดทั้ง Web Speech preview + recorder; onstop จะถอดด้วย Gemini
+    recOn=false; hybridRec=false; try{ rec && rec.stop(); }catch{} try{ mediaRec && mediaRec.stop(); }catch{}
+    setMicUI(); refreshStatus(); return;
+  }
   if(typeof MediaRecorder==="undefined"){ showError("เบราว์เซอร์นี้ไม่รองรับ MediaRecorder"); return; }
   if(!getKey("gemini")){ showError("โหมด AI ต้องมี Gemini key"); return; }
   try{ audioStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
   catch(e){ showError("ไมค์ถูกบล็อก — เปิดสิทธิ์ใน browser แล้วรีโหลด"); return; }
-  showError(""); finalText=""; audioChunks=[];
+  showError(""); finalText=""; hybridText=""; audioChunks=[];
   mediaRec=new MediaRecorder(audioStream);
   mediaRec.ondataavailable=e=>{ if(e.data && e.data.size) audioChunks.push(e.data); };
   mediaRec.onstop=async()=>{
     try{ audioStream.getTracks().forEach(t=>t.stop()); }catch{}
     const blob=new Blob(audioChunks,{type:mediaRec.mimeType||"audio/webm"});
-    if(voiceLiveEl) voiceLiveEl.textContent="✨ กำลังถอดเสียง…";
-    try{
-      const text=await transcribeAudioGemini(blob);
-      if(!text){ clearVoicePreview(); showError("ถอดเสียงไม่ได้ (เงียบ/สั้นไป) ลองใหม่"); return; }
-      finalText=text; updateVoicePreview(finalText);
-      if(autoSend){ const t=finalText.trim(); finalText=""; clearVoicePreview(); await submit(t); }  // auto = ส่งเลย
-    }catch(e){ clearVoicePreview(); showError("ถอดเสียงไม่สำเร็จ: "+esc(e.message)); }
+    const fallback=hybridText.trim();   // ข้อความ Web Speech สำรองถ้า Gemini ล้ม
+    if(voiceLiveEl) voiceLiveEl.textContent="✨ กำลังถอดด้วย AI…";
+    let text="";
+    try{ text=await transcribeAudioGemini(blob); }
+    catch(e){ text=fallback; if(!fallback){ clearVoicePreview(); showError("ถอดเสียงไม่สำเร็จ: "+esc(e.message)); return; } }
+    text = (text||fallback).trim();
+    if(!text){ clearVoicePreview(); showError("ถอดเสียงไม่ได้ (เงียบ/สั้นไป) ลองใหม่"); return; }
+    finalText=text; updateVoicePreview(finalText);
+    if(autoSend){ const t=finalText.trim(); finalText=""; clearVoicePreview(); await submit(t); }  // auto = ส่งเลย
   };
-  recOn=true; mediaRec.start();
-  updateVoicePreview("(กำลังอัด…)"); setMicUI(); refreshStatus();
+  recOn=true; hybridRec=true; mediaRec.start();
+  startRec();   // Web Speech โชว์สด (preview only)
+  updateVoicePreview("(กำลังฟัง…)"); setMicUI(); refreshStatus();
 }
 
 async function voiceSend(){

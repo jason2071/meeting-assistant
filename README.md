@@ -9,7 +9,11 @@
 - **🧠 ถาม AI** — ตอบสดแบบ stream token-by-token
 - **📊 ประเมินงาน** — ป้อนงาน → ได้ผลเป็น JSON (สรุป, stack, เวลารวม, breakdown, ความเสี่ยง)
 - **✨ แก้คำถอดเสียง (option)** — toggle ใน header; เปิดแล้วเสียงที่ถอดจะถูก LLM แก้คำเพี้ยน/ศัพท์เทคนิคก่อนส่ง (ไทยปนอังกฤษแม่นขึ้น) — เพิ่ม 1 LLM call, default ปิด
-- **🎙 ถอดเสียง: สด / AI** — toggle ในตั้งค่า. **สด** = Web Speech (live ทีละคำ ฟรี). **AI แม่นกว่า** = กดเริ่มอัด→กดจบ→ Gemini ถอดทั้งคลิป (ไทยปนศัพท์ dev แม่นกว่า, ใช้ Gemini key, ไม่ live)
+- **🎙 ถอดเสียง: สด / สด+AI / เรียลไทม์** — toggle ในตั้งค่า:
+  - **สด** = Web Speech (live ทีละคำ ฟรี)
+  - **สด+AI แม่น** (hybrid) = พูด→เห็นสด (Web Speech)→กดจบ→ Gemini ถอด clip ใหม่ (แม่นกว่า, Gemini key; fallback ข้อความสด)
+  - **เรียลไทม์** (experimental) = Gemini Live API streaming (WebSocket) ถอดสดทุกคำ realtime, ตัดประโยคอัตโนมัติ (Gemini key + project ที่เข้าถึง Live model ได้)
+    - **แปลสด** (option ข้างๆ): เลือก "แปล→ไทย/Eng/日本語/中文" → ใช้ `gemini-3.5-live-translate-preview` แปลสดขณะพูด (อ่านข้อความที่แปลแล้ว). ต้องมีสิทธิ์ preview model; ถ้าไม่มีจะขึ้น error เฉยๆ ไม่กระทบโหมดอื่น
 - **Multi-provider** — OpenRouter, Google Gemini, OpenAI (GPT), Anthropic (Claude) — ทุกตัว vision-capable
 - **Session history** — บันทึกแต่ละ session อัตโนมัติ (localStorage) เปิดดูย้อนหลังได้
 - **Custom font size** — slider ในตั้งค่า ⚙ ปรับขนาดฟอนต์คำตอบ
