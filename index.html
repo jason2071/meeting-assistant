@@ -890,6 +890,14 @@ results.addEventListener("click",(e)=>{
   if(item) summarizeMeeting(item, sb.closest(".bubble"));
 });
 
+// แปลง JSON ที่ LLM ตอบมาแบบหลวมๆ — ตัดข้อความนำ/ตาม (เอา {…} ก้อนนอกสุด) + ลบ trailing comma
+function looseJSON(s){
+  const a=s.indexOf("{"), b=s.lastIndexOf("}");
+  const t=(a>=0 && b>a) ? s.slice(a,b+1) : s;
+  try{ return JSON.parse(t); }catch{}
+  return JSON.parse(t.replace(/,(\s*[}\]])/g,"$1"));  // ลองอีกครั้งหลังลบ trailing comma; fail → โยน error
+}
+
 // ── Submit ──
 $("sendBtn").onclick=()=>submit();
 $("input").addEventListener("keydown",(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") submit(); });
@@ -920,7 +928,7 @@ async function submit(override){
       const raw=await streamLLM(req,null);
       const clean=raw.replace(/```json|```/g,"").trim();
       if(!clean || clean==="{") throw new Error("AI ตอบว่าง/ไม่เป็น JSON (อาจถูกตัดหรือ model ไม่รองรับ json mode) — ลองใหม่ หรือเปลี่ยน model");
-      const est=JSON.parse(clean);
+      const est=looseJSON(clean);
       load.remove(); renderEstimate(bubble,est); scrollBottom();
       saveItem({q, mode:"est", hadImage:!!image, raw:JSON.stringify(est)});
     }catch(e){ load.textContent=""; load.appendChild(el("span","warn","⚠ "+esc(e.message))); }
