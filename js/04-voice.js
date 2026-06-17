@@ -122,7 +122,8 @@ function buildRec(){
         if(ev.results[i].isFinal) hybridText+=t+" "; else interim+=t;
       }
       updateVoicePreview((hybridText+interim).trim()||"(กำลังฟัง…)");
-      if(hybridText.trim()){ clearTimeout(silenceTimer); silenceTimer=setTimeout(cutHybridClip, silenceMs); }  // เงียบครบ → ตัด
+      // ตัดเมื่อเงียบครบ — floor 2.8s (กันตัดกลางประโยคตอนหยุดคิด) + ต้องมีข้อความพอควร (กันตัดเศษ)
+      if(hybridText.trim().length>=4){ clearTimeout(silenceTimer); silenceTimer=setTimeout(cutHybridClip, Math.max(silenceMs,3500)); }
       return;
     }
     for(let i=ev.resultIndex;i<ev.results.length;i++){

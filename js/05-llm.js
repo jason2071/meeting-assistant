@@ -101,7 +101,9 @@ async function transcribeAudioGemini(blob){
   const model=(provider==="gemini" ? modelInp.value.trim() : "") || "gemini-3-flash-preview";
   const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
   const body={ contents:[{role:"user",parts:[
-    {text:"ถอดเสียงนี้เป็นข้อความแบบ verbatim ภาษาไทยผสมศัพท์เทคนิคอังกฤษ ตอบกลับเฉพาะข้อความที่ถอดได้ล้วนๆ ไม่ต้องอธิบาย ไม่ต้องใส่ timestamp"},
+    {text:"ถอดเสียงนี้เป็นข้อความ ภาษาไทยผสมศัพท์เทคนิคอังกฤษ. เก็บใจความให้เป็นประโยคสมบูรณ์อ่านรู้เรื่อง "+
+      "ตัดคำฟิลเลอร์/เสียงลังเล (อ่า, เออ, อืม, เอ่อ, นะครับ, คือ ที่ซ้ำๆ) และคำพูดซ้ำที่ไม่จำเป็นออก แก้ศัพท์เทคนิคให้ถูก "+
+      "ห้ามเพิ่มเนื้อหาที่ไม่ได้พูด ห้ามอธิบาย ห้ามใส่ timestamp. ถ้าเสียงไม่ชัด/สั้น/ฟังไม่ออก ให้ตอบว่างเปล่า. ตอบกลับเฉพาะข้อความที่ถอดได้ล้วนๆ"},
     {inline_data:{mime_type:"audio/wav",data:b64}}]}], generationConfig:{maxOutputTokens:1024} };
   const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,200)); }
