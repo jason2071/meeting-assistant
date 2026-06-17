@@ -794,7 +794,8 @@ function mdToHtml(src){
 }
 
 // ── chat bubbles ──
-function roleLabel(who){ return el("div","role", who==="user"?"🧑 คุณ":"🤖 AI"); }
+// qa/est: ฝั่งพูด/ถาม = "คนถาม" (คนบอก detail งาน ไม่ใช่ฉัน/operator); AI ตอบ. meeting ใช้ label ของตัวเอง
+function roleLabel(who){ return el("div","role", who==="user"?"🗣 คนถาม":"🤖 AI"); }
 function addUserMsg(q, hadImage){
   const m=el("div","msg user");
   m.appendChild(roleLabel("user"));
@@ -816,7 +817,7 @@ function updateVoicePreview(txt){
   if(!txt){ clearVoicePreview(); return; }
   if(!voiceWrapEl){
     voiceWrapEl=el("div","msg user voice-live");
-    voiceWrapEl.appendChild(el("div","role","🧑 คุณ (กำลังพูด…)"));
+    voiceWrapEl.appendChild(el("div","role","🗣 คนถาม (กำลังพูด…)"));
     voiceLiveEl=el("div","bubble"); voiceLiveEl.style.whiteSpace="pre-wrap";
     voiceWrapEl.appendChild(voiceLiveEl);
     results.appendChild(voiceWrapEl);
