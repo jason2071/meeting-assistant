@@ -75,12 +75,13 @@ function setMicUI(){
   if(sttEngine==="gemini"){   // สด+AI auto-cut: idle / ฟังต่อเนื่อง (เงียบ→ถอด+ส่งเอง)
     b.className = "mic" + (recOn?" on":"");
     b.textContent = recOn ? "⏹ หยุด" : "🎤 เริ่มฟัง";
-    $("stopBtn").style.display="none";
+    $("stopBtn").textContent="✂️ ส่งเลย";   // ตัด clip + ถอด + ส่งทันที (ไม่รอเงียบ) แล้วฟังต่อ
+    $("stopBtn").style.display = recOn ? "" : "none";
     return;
   }
   b.className = "mic" + (micOn?" on":"") + (paused?" paused":"");
   b.textContent = micOn ? "⏸ พัก" : (paused ? "▶ ฟังต่อ" : "🎤 เริ่มฟัง");
-  $("stopBtn").style.display = (micOn||paused) ? "" : "none";
+  $("stopBtn").textContent="⏹ จบ"; $("stopBtn").style.display = (micOn||paused) ? "" : "none";
 }
 
 // ── Screen share ──
@@ -168,7 +169,7 @@ $("micBtn").onclick=()=>{
   if(sttEngine==="gemini") return toggleGeminiRecord();   // push-to-record (Gemini batch STT)
   if(micOn) pauseListen(); else if(paused) resumeListen(); else startListen();
 };
-$("stopBtn").onclick=stopListen;
+$("stopBtn").onclick=()=>{ if(sttEngine==="gemini" && recOn) cutHybridClip(); else stopListen(); };   // gemini: ตัด+ส่งเลย (ฟังต่อ); web: จบ session
 
 // ── สด+AI (gemini mode): auto-cut ต่อเนื่อง — กดเริ่มครั้งเดียว พูดเรื่อยๆ, Web Speech เป็น VAD,
 //    เงียบ → ตัดคลิป → Gemini ถอด → ส่ง → ฟังต่อ (hands-free + แม่น). กดอีกครั้ง = หยุด
