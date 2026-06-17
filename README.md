@@ -8,6 +8,7 @@
 - **🖥 แชร์จอ** — แนบภาพหน้าจอไปกับคำถาม ให้ AI อ่าน error / code / diagram / ตาราง ประกอบ
 - **🧠 ถาม AI** — ตอบสดแบบ stream token-by-token
 - **📊 ประเมินงาน** — ป้อนงาน → ได้ผลเป็น JSON (สรุป, stack, เวลารวม, breakdown, ความเสี่ยง)
+- **🎙 ประชุม** — อัดประชุมยาว (กด start/stop เอง) ถอดเสียงสะสมเป็น transcript เดียว โชว์สด → กด **สรุปประชุม** ทีหลังได้ → AI สรุป + action items. v1 ไม่แยกผู้พูด (เสียงทุกคนรวมสายเดียว)
 - **Multi-provider** — OpenRouter, Google Gemini, OpenAI (GPT), Anthropic (Claude) — ทุกตัว vision-capable
 - **Session history** — บันทึกแต่ละ session อัตโนมัติ (localStorage) เปิดดูย้อนหลังได้
 - **Custom font size** — slider ในตั้งค่า ⚙ ปรับขนาดฟอนต์คำตอบ
@@ -35,8 +36,10 @@ python3 -m http.server 8000
 > ต้องใช้ **Chrome / Edge** — `SpeechRecognition` (ฟังเสียง) ไม่รองรับบน Firefox/Safari ส่วน text input ใช้ได้ทุกเบราว์เซอร์
 
 1. กด ⚙ → เลือก **provider** + ใส่ **API key** → เลือก **model** (กด ↻ ดึงรายชื่อ model จริงจาก provider มาเลือก, ปุ่ม Free กรองเฉพาะตัวฟรี)
-2. เลือกโหมด **🧠 ถาม AI** หรือ **📊 ประเมินงาน**
+2. เลือกโหมด **🧠 ถาม AI** / **📊 ประเมินงาน** / **🎙 ประชุม** บนหน้าหลัก **ก่อนกดเริ่ม** — โหมดล็อกต่อ session (อยากเปลี่ยนโหมด = กลับหน้าหลักเริ่ม session ใหม่; ไม่มี tab สลับในแชท). header ในแชทมี badge บอกโหมดปัจจุบัน
 3. พิมพ์ หรือกด 🎤 เริ่มฟัง / 🖥 แชร์จอ แล้วถามได้เลย (`⌘/Ctrl + Enter` เพื่อส่ง)
+4. โหมด **🎙 ประชุม**: กด **🎙 เริ่มประชุม** → ถอดเสียงสะสม (โชว์สด) → กด **⏹ จบประชุม** → กด **📝 สรุปประชุม** เมื่อไหร่ก็ได้ (transcript ถูกบันทึกใน session แล้ว สรุปทีหลังได้)
+   - ไม่แยกเสียงเรา/คนอื่น — อยากได้ speaker label (mic=เรา, Meet=เขา) ต้องเปลี่ยน engine เป็น cloud STT ที่มี diarization (เช่น Deepgram multichannel) = งานอนาคต
 
 ## ถอดเสียงประชุม (system audio) — macOS + BlackHole
 
