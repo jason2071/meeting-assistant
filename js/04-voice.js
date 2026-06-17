@@ -20,9 +20,9 @@ function setMode(m){
 }
 
 // ── Toggles ──
-$("autoBtn").onclick=()=>{ autoSend=!autoSend; $("autoBtn").classList.toggle("on",autoSend); };
-$("correctBtn").classList.toggle("on", correctVoice);
-$("correctBtn").onclick=()=>{ correctVoice=!correctVoice; $("correctBtn").classList.toggle("on",correctVoice); store.set("ma_correct", correctVoice?"1":"0"); };
+$("autoBtn").onclick=()=>{ autoSend=!autoSend; $("autoBtn").classList.toggle("on",autoSend); $("autoBtn").setAttribute("aria-pressed", String(autoSend)); };
+$("correctBtn").classList.toggle("on", correctVoice); $("correctBtn").setAttribute("aria-pressed", String(correctVoice));
+$("correctBtn").onclick=()=>{ correctVoice=!correctVoice; $("correctBtn").classList.toggle("on",correctVoice); $("correctBtn").setAttribute("aria-pressed", String(correctVoice)); store.set("ma_correct", correctVoice?"1":"0"); };
 silenceInp.value = (silenceMs/1000).toFixed(1);
 silenceInp.onchange=()=>{
   let s=parseFloat(silenceInp.value); if(isNaN(s)) s=1.8; s=Math.min(6,Math.max(0.5,s));

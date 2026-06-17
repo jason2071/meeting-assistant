@@ -44,7 +44,7 @@
               <div class="lbl" style="margin-bottom:6px;display:flex;align-items:center;gap:8px">
                 <span>MODEL</span>
                 <button id="fetchModels" type="button" class="minibtn" title="โหลดรายชื่อ model จาก provider"
-                  style="width:28px;height:28px;font-size:13px;padding:0">↻</button>
+                  aria-label="โหลดรายชื่อ model จาก provider" style="width:28px;height:28px;font-size:13px;padding:0">↻</button>
                 <button id="freeFilter" type="button" class="minibtn" title="กรองเฉพาะ model ฟรี"
                   style="height:28px;padding:0 10px;font-size:11px;font-weight:700;letter-spacing:0">Free</button>
                 <span id="modelStatus" class="mono" style="font-weight:500;letter-spacing:0;color:var(--muted)"></span>
@@ -127,10 +127,10 @@
           <button id="thBtn" class="on">ไทย</button>
           <button id="enBtn">Eng</button>
         </div>
-        <button id="autoBtn" class="pill on" title="ส่งอัตโนมัติหลังเงียบ" style="padding:6px 9px">⚡</button>
-        <button id="correctBtn" class="pill" title="แก้คำถอดเสียงด้วย AI ก่อนส่ง (เพิ่ม 1 LLM call)" aria-label="แก้คำถอดเสียงด้วย AI">✨ แก้คำ</button>
+        <button id="autoBtn" class="pill on" title="ส่งอัตโนมัติหลังเงียบ" aria-label="ส่งอัตโนมัติหลังเงียบ" aria-pressed="true" style="padding:6px 9px">⚡</button>
+        <button id="correctBtn" class="pill" title="แก้คำถอดเสียงด้วย AI ก่อนส่ง (เพิ่ม 1 LLM call)" aria-label="แก้คำถอดเสียงด้วย AI" aria-pressed="false">✨ แก้คำ</button>
         <span id="count" class="mono" style="font-size:11px;color:var(--muted)">0 คำถาม</span>
-        <button id="clear" class="iconbtn" title="ล้างทั้งหมด" style="display:none;width:32px;height:32px">🗑</button>
+        <button id="clear" class="iconbtn" title="ล้างทั้งหมด" aria-label="ล้างแชททั้งหมด" style="display:none;width:32px;height:32px">🗑</button>
       </header>
 
       <div id="results" class="chat-msgs"></div>

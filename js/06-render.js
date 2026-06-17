@@ -8,9 +8,15 @@ function bumpCount(){
   $("clear").style.display=items?"flex":"none";
   if(!items){
     const hasKey = !!(keyInp.value.trim() || getKey(provider));
-    empty.textContent = hasKey
-      ? "พิมพ์หรือพูดคำถามด้านล่างเพื่อเริ่ม"
-      : "ยังไม่ได้ใส่ API key — กลับไปตั้งค่าที่หน้าหลัก";
+    if(hasKey){
+      empty.textContent = "พิมพ์หรือพูดคำถามด้านล่างเพื่อเริ่ม";
+    } else {
+      // dead-end เดิม → ทำปุ่มคลิกไปตั้งค่าได้จริง
+      empty.innerHTML = "ยังไม่ได้ใส่ API key — ";
+      const b=el("button","link-btn","ไปตั้งค่าที่หน้าหลัก");
+      b.type="button"; b.onclick=()=>showView("home");
+      empty.appendChild(b);
+    }
     empty.style.display="block";
   } else {
     empty.style.display="none";
