@@ -1,6 +1,6 @@
   :root {
     --bg:#0F1419; --panel:#161B22; --panel2:#1A222C; --border:#26313D;
-    --text:#E6EDF3; --muted:#9BA8B4; --teal:#2DD4BF; --amber:#F0A93B; --red:#F0726B;
+    --text:#E6EDF3; --muted:#A8B4C0; --teal:#2DD4BF; --amber:#F0A93B; --red:#F0726B;
     --fs:14px;
   }
   * { box-sizing:border-box; }
