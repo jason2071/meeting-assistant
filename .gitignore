@@ -14,6 +14,7 @@ tmp/
 
 # Test / tooling artifacts
 .playwright-mcp/
+graphify-out/
 
 # Secrets / env (API keys live in the browser, but never commit any leak)
 .env
