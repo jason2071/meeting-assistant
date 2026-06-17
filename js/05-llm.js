@@ -105,11 +105,15 @@ async function transcribeAudioGemini(blob){
   const body={ contents:[{role:"user",parts:[
     {text:"ถอดเสียงนี้เป็นข้อความแบบ verbatim ภาษาไทยผสมศัพท์เทคนิคอังกฤษ — ถอดครบตามที่พูด ห้ามสรุป ห้ามย่อ ห้ามตัดทอน. "+
       "**ถอดเฉพาะคำที่ได้ยินจริงเท่านั้น ห้ามเดา ห้ามเติม ห้ามแต่งประโยคที่ไม่ได้พูด** โดยเฉพาะช่วงต้นและท้ายคลิปที่เสียงอาจขาด/ไม่ชัด — ถ้าช่วงไหนไม่ชัดหรือไม่มีเสียงพูดให้ข้ามไป อย่าสร้างขึ้นมาเอง. "+
+      "ขึ้นต้นด้วยคำพูดแรกที่ได้ยินทันที **ห้ามมีคำนำ/บทเกริ่น/คำขึ้นต้นเชิงสนทนาเด็ดขาด** (เช่น 'ได้เลยครับ', 'นี่คือข้อความที่ถอด...', '...แบบ verbatim ครับ'). "+
       "ตอบกลับเฉพาะข้อความที่ถอดได้ล้วนๆ ไม่ต้องอธิบาย ไม่ต้องใส่ timestamp"},
     {inline_data:{mime_type:"audio/wav",data:b64}}]}],
     generationConfig:{maxOutputTokens:1024, temperature:0, ...(thinkOn?{}:{thinkingConfig:{thinkingBudget:0}})} };  // temp 0 ลด hallucination; thinking ตาม toggle 🧠
   const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,200)); }
   const j=await res.json();
-  return (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("").trim();
+  let text=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("").trim();
+  // กัน preamble เชิงสนทนาหลุดปน (เช่น "ได้เลยครับ นี่คือข้อความที่ถอด...verbatim ครับ") — ตัดบรรทัดนำที่พูดถึงการถอด/verbatim
+  text=text.replace(/^[^\n]{0,120}?(ถอด(เสียง|จาก)|verbatim|transcri)[^\n]*\n+/i,"").trim();
+  return text;
 }
