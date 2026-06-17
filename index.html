@@ -65,9 +65,13 @@
             <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">🎙 ถอดเสียง</div>
             <div class="seg" id="sttSeg">
               <button id="sttWeb" class="on" title="Web Speech — สด ทีละคำ (ฟรี)">สด</button>
-              <button id="sttGemini" title="กดเริ่ม→พูด (เห็นสด)→กดจบ → Gemini ถอดทั้งคลิปแม่นกว่า (ใช้ Gemini key)">สด+AI แม่น</button>
+              <button id="sttGemini" title="กดเริ่ม→พูด (เห็นสด)→กดจบ → AI ถอดทั้งคลิปแม่นกว่า (OpenRouter ใช้ credit / provider อื่นใช้ Gemini key)">สด+AI แม่น</button>
             </div>
-            <span id="sttHint" class="mono" style="font-size:11px;color:var(--muted)">สด = ทีละคำ (ฟรี) · สด+AI = โชว์สดตอนพูด แล้ว Gemini ถอดแม่นตอนจบ</span>
+            <span id="sttHint" class="mono" style="font-size:11px;color:var(--muted)">สด = ทีละคำ (ฟรี) · สด+AI = โชว์สดตอนพูด แล้ว AI ถอดแม่นตอนจบ (OpenRouter=ใช้ credit, อื่น=Gemini key)</span>
+          </div>
+          <div id="geminiKeyRow" style="display:none">
+            <div class="lbl" style="margin-bottom:6px">Gemini API key <span style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)">· สำหรับ สด+AI (provider นี้ถอดเสียงเองไม่ได้ — OpenRouter ถอดผ่าน credit ได้เลย)</span></div>
+            <input id="geminiKey" type="password" autocomplete="off" style="width:100%" placeholder="วาง Gemini API key — เก็บใน sessionStorage เท่านั้น (ปิดแท็บแล้วหาย)" />
           </div>
           <div class="row" style="gap:8px;flex-wrap:wrap">
             <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">🧠 คิดก่อนตอบ</div>

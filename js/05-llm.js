@@ -95,24 +95,43 @@ async function blobToWav(blob){
   let o=44; for(let i=0;i<len;i++){ let s=Math.max(-1,Math.min(1,data[i])); v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true); o+=2; }
   return new Blob([out],{type:"audio/wav"});
 }
-async function transcribeAudioGemini(blob){
-  const key=getKey("gemini");
-  if(!key) throw new Error("ต้องมี Gemini API key — เลือก provider Gemini แล้วใส่ key");
+const STT_PROMPT =
+  "ถอดเสียงนี้เป็นข้อความแบบ verbatim ภาษาไทยผสมศัพท์เทคนิคอังกฤษ — ถอดครบตามที่พูด ห้ามสรุป ห้ามย่อ ห้ามตัดทอน. "+
+  "**ถอดเฉพาะคำที่ได้ยินจริงเท่านั้น ห้ามเดา ห้ามเติม ห้ามแต่งประโยคที่ไม่ได้พูด** โดยเฉพาะช่วงต้นและท้ายคลิปที่เสียงอาจขาด/ไม่ชัด — ถ้าช่วงไหนไม่ชัดหรือไม่มีเสียงพูดให้ข้ามไป อย่าสร้างขึ้นมาเอง. "+
+  "ขึ้นต้นด้วยคำพูดแรกที่ได้ยินทันที **ห้ามมีคำนำ/บทเกริ่น/คำขึ้นต้นเชิงสนทนาเด็ดขาด** (เช่น 'ได้เลยครับ', 'นี่คือข้อความที่ถอด...', '...แบบ verbatim ครับ'). "+
+  "ตอบกลับเฉพาะข้อความที่ถอดได้ล้วนๆ ไม่ต้องอธิบาย ไม่ต้องใส่ timestamp";
+// ถอดเสียง (สด+AI): เลือก backend ตาม sttBackend() — openrouter (ใช้ credit, model google/gemini-2.5-flash audio) หรือ Gemini native
+async function transcribeAudio(blob){
+  const be=sttBackend();
+  if(!be.key) throw new Error("ต้องมี key สำหรับถอดเสียง — ใช้ provider OpenRouter (มี credit) หรือใส่ Gemini key");
   const wav=await blobToWav(blob);
   const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onloadend=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(wav); });
-  const model=(provider==="gemini" ? modelInp.value.trim() : "") || "gemini-3-flash-preview";
-  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-  const body={ contents:[{role:"user",parts:[
-    {text:"ถอดเสียงนี้เป็นข้อความแบบ verbatim ภาษาไทยผสมศัพท์เทคนิคอังกฤษ — ถอดครบตามที่พูด ห้ามสรุป ห้ามย่อ ห้ามตัดทอน. "+
-      "**ถอดเฉพาะคำที่ได้ยินจริงเท่านั้น ห้ามเดา ห้ามเติม ห้ามแต่งประโยคที่ไม่ได้พูด** โดยเฉพาะช่วงต้นและท้ายคลิปที่เสียงอาจขาด/ไม่ชัด — ถ้าช่วงไหนไม่ชัดหรือไม่มีเสียงพูดให้ข้ามไป อย่าสร้างขึ้นมาเอง. "+
-      "ขึ้นต้นด้วยคำพูดแรกที่ได้ยินทันที **ห้ามมีคำนำ/บทเกริ่น/คำขึ้นต้นเชิงสนทนาเด็ดขาด** (เช่น 'ได้เลยครับ', 'นี่คือข้อความที่ถอด...', '...แบบ verbatim ครับ'). "+
-      "ตอบกลับเฉพาะข้อความที่ถอดได้ล้วนๆ ไม่ต้องอธิบาย ไม่ต้องใส่ timestamp"},
-    {inline_data:{mime_type:"audio/wav",data:b64}}]}],
-    generationConfig:{maxOutputTokens:1024, temperature:0, ...(thinkOn?{}:{thinkingConfig:{thinkingBudget:0}})} };  // temp 0 ลด hallucination; thinking ตาม toggle 🧠
-  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-  if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,200)); }
-  const j=await res.json();
-  let text=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("").trim();
+  let text;
+  if(be.via==="openrouter"){
+    // OpenRouter chat/completions — audio input ผ่าน content type input_audio (base64 wav); model audio-capable
+    const body={ model:"google/gemini-2.5-flash", temperature:0,
+      messages:[{role:"user",content:[
+        {type:"text",text:STT_PROMPT},
+        {type:"input_audio",input_audio:{data:b64,format:"wav"}} ]}] };
+    const res=await fetch("https://openrouter.ai/api/v1/chat/completions",{ method:"POST",
+      headers:{ "Content-Type":"application/json","Authorization":"Bearer "+be.key,"HTTP-Referer":"http://localhost","X-Title":"Meeting Assistant" },
+      body:JSON.stringify(body) });
+    if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,200)); }
+    const j=await res.json();
+    text=(j.choices?.[0]?.message?.content||"").trim();
+  } else {
+    // Gemini native (generateContent + inline audio)
+    const model=(provider==="gemini" ? modelInp.value.trim() : "") || "gemini-3-flash-preview";
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(be.key)}`;
+    const body={ contents:[{role:"user",parts:[
+      {text:STT_PROMPT},
+      {inline_data:{mime_type:"audio/wav",data:b64}}]}],
+      generationConfig:{maxOutputTokens:1024, temperature:0, ...(thinkOn?{}:{thinkingConfig:{thinkingBudget:0}})} };  // temp 0 ลด hallucination; thinking ตาม toggle 🧠
+    const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,200)); }
+    const j=await res.json();
+    text=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("").trim();
+  }
   // กัน preamble เชิงสนทนาหลุดปน (เช่น "ได้เลยครับ นี่คือข้อความที่ถอด...verbatim ครับ") — ตัดบรรทัดนำที่พูดถึงการถอด/verbatim
   text=text.replace(/^[^\n]{0,120}?(ถอด(เสียง|จาก)|verbatim|transcri)[^\n]*\n+/i,"").trim();
   return text;

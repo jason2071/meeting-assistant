@@ -11,7 +11,7 @@
 - **✨ แก้คำถอดเสียง (option)** — toggle ใน header; เปิดแล้วเสียงที่ถอดจะถูก LLM แก้คำเพี้ยน/ศัพท์เทคนิคก่อนส่ง (ไทยปนอังกฤษแม่นขึ้น) — เพิ่ม 1 LLM call, default ปิด
 - **🎙 ถอดเสียง: สด / สด+AI** — toggle ในตั้งค่า:
   - **สด** = Web Speech (live ทีละคำ ฟรี)
-  - **สด+AI แม่น** = กดเริ่มฟังครั้งเดียว → พูดต่อเนื่อง hands-free → เงียบปุ๊บตัดประโยค → Gemini ถอดแม่น → ส่งเอง → ฟังต่อ (Web Speech โชว์สด+เป็น VAD; Gemini key; fallback ข้อความสดถ้า Gemini ล้ม; ปุ่ม ✂️ ส่งเลยได้). มี lag ~1-2 วิ/ประโยค
+  - **สด+AI แม่น** = กดเริ่มฟังครั้งเดียว → พูดต่อเนื่อง hands-free → เงียบปุ๊บตัดประโยค → AI ถอดแม่น → ส่งเอง → ฟังต่อ (Web Speech โชว์สด+เป็น VAD; fallback ข้อความสดถ้าถอดล้ม; ปุ่ม ✂️ ส่งเลยได้). มี lag ~1-2 วิ/ประโยค. **ถอดผ่าน:** provider OpenRouter → ใช้ **credit** (model `google/gemini-2.5-flash`, ไม่ต้องมี Gemini key แยก); provider Gemini → ใช้ Gemini key ช่องหลัก; provider อื่น (OpenAI/Claude) → ใส่ Gemini key ช่องแยก
 - **Multi-provider** — OpenRouter, Google Gemini, OpenAI (GPT), Anthropic (Claude) — ทุกตัว vision-capable
 - **Session history** — บันทึกแต่ละ session อัตโนมัติใน **IndexedDB** (quota ใหญ่ ไม่ชน localStorage ~5MB; ของเก่าใน localStorage ย้ายเข้าให้อัตโนมัติ) เปิดดูย้อนหลังได้
 - **Custom font size** — slider ในตั้งค่า ⚙ ปรับขนาดฟอนต์คำตอบ

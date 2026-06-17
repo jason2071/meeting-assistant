@@ -59,7 +59,7 @@ async function fetchModels(){
   }
 }
 fetchBtn.onclick = fetchModels;
-providerSel.onchange = ()=>loadProvider(providerSel.value);
+providerSel.onchange = ()=>{ loadProvider(providerSel.value); if(typeof syncGeminiKeyRow==="function") syncGeminiKeyRow(); };
 modelSel.onchange = ()=>{ modelInp.value=modelSel.value; store.set(modelKey(provider), modelSel.value); };
 keyInp.oninput = ()=>skey.set(keyKey(provider), keyInp.value.trim());
 // stack/บริบท (persist localStorage; default ว่าง = ไม่ pin ภาษา)

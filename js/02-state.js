@@ -43,6 +43,12 @@ function getKey(p){
   if(!k){ const env = (window.__MA_KEYS__||{})[p]; if(env) return env; }
   return k || "";
 }
+// STT (สด+AI) ถอดเสียงผ่าน backend ไหน: provider=openrouter ที่มี credit → ยิงผ่าน OpenRouter (model audio-capable);
+// ไม่งั้น Gemini native (ต้องมี Gemini key — provider=gemini ใช้ช่อง key หลัก, provider อื่นใส่ช่อง Gemini key แยก)
+function sttBackend(){
+  if(provider==="openrouter" && getKey("openrouter")) return { via:"openrouter", key:getKey("openrouter") };
+  return { via:"gemini", key:getKey("gemini") };
+}
 
 // ── State ──
 let provider = store.get("ma_provider") || "gemini";

@@ -40,10 +40,18 @@ function setLang(l){ lang=l; $("thBtn").classList.toggle("on",l==="th-TH"); $("e
 let sttEngine = store.get("ma_stt")||"web";
 let recOn=false, mediaRec=null, audioChunks=[], audioStream=null;  // gemini push-to-record state
 let hybridRec=false, hybridText="";  // hybrid: Web Speech live preview ระหว่างอัด (Gemini ถอดจริงตอนจบ)
-function applySttUI(){ $("sttWeb").classList.toggle("on",sttEngine==="web"); $("sttGemini").classList.toggle("on",sttEngine==="gemini"); }
+// ช่อง Gemini key แยก: โผล่เฉพาะตอนใช้ สด+AI แล้ว backend ต้องใช้ Gemini key (provider=openai/claude)
+// — provider=gemini ใช้ช่อง key หลัก, provider=openrouter ถอดผ่าน credit (ไม่ต้องใส่ Gemini แยก)
+function syncGeminiKeyRow(){
+  const need = sttEngine==="gemini" && sttBackend().via==="gemini" && provider!=="gemini";
+  $("geminiKeyRow").style.display = need ? "" : "none";
+  if(need) $("geminiKey").value = getKey("gemini");
+}
+$("geminiKey").oninput = ()=>skey.set(keyKey("gemini"), $("geminiKey").value.trim());
+function applySttUI(){ $("sttWeb").classList.toggle("on",sttEngine==="web"); $("sttGemini").classList.toggle("on",sttEngine==="gemini"); syncGeminiKeyRow(); }
 function setStt(e){
   if(micOn||paused||recOn) return;   // กำลังฟัง/อัด ห้ามสลับ
-  if(e==="gemini" && !getKey("gemini")){ showError("โหมดนี้ต้องมี Gemini key — เลือก provider Gemini แล้วใส่ key ก่อน"); return; }
+  if(e==="gemini" && !sttBackend().key){ showError("โหมดนี้ต้องมี key — ใช้ provider OpenRouter (มี credit) หรือใส่ Gemini key"); return; }
   sttEngine=e; store.set("ma_stt",e); applySttUI(); setMicUI();
 }
 $("sttWeb").onclick=()=>setStt("web");
@@ -191,10 +199,12 @@ async function _hybridClipDone(){
   const blob=new Blob(audioChunks,{type:(mediaRec&&mediaRec.mimeType)||"audio/webm"});
   const fallback=hybridText.trim(); hybridText="";   // Web Speech ของคลิปนี้ (สำรองถ้า Gemini ล้ม)
   if(recOn) startHybridClip();   // เริ่มอัดคลิปถัดไปทันที (ไม่ให้ขาดช่วง) ถ้ายังไม่หยุด
+  // ยังไม่ได้พูดอะไร (Web Speech ไม่จับ + คลิปแทบไม่มีเสียง) → ข้าม ไม่ต้องโชว์ "กำลังถอด"/ยิง transcribe
+  if(!fallback && blob.size < 2000){ clearVoicePreview(); return; }
   // คงข้อความ rough ไว้ + "กำลังถอด" กันจอว่างระหว่างรอ Gemini (~1-2s) — จะถูกแทนด้วย bubble จริงตอนส่ง
   updateVoicePreview((fallback?fallback+"  ":"")+"✨ กำลังถอด…");
   let text=fallback;
-  try{ const g=await transcribeAudioGemini(blob); if(g && g.trim()) text=g.trim(); }catch(e){ clearVoicePreview(); if(!fallback) showError("ถอดเสียงไม่สำเร็จ: "+esc(e.message)); }
+  try{ const g=await transcribeAudio(blob); if(g && g.trim()) text=g.trim(); }catch(e){ clearVoicePreview(); if(!fallback) showError("ถอดเสียงไม่สำเร็จ: "+esc(e.message)); }
   text=(text||"").trim();
   if(text){ hybridQ.push(text); _drainHybridQ(); }   // submit จะ clearVoicePreview + เพิ่ม bubble จริง (ไม่มีจอว่าง)
   else clearVoicePreview();
@@ -208,7 +218,7 @@ async function toggleGeminiRecord(){
     setMicUI(); refreshStatus(); return;
   }
   if(typeof MediaRecorder==="undefined"){ showError("เบราว์เซอร์นี้ไม่รองรับ MediaRecorder"); return; }
-  if(!getKey("gemini")){ showError("โหมด AI ต้องมี Gemini key"); return; }
+  if(!sttBackend().key){ showError("โหมด AI ต้องมี key — provider OpenRouter (credit) หรือ Gemini key"); return; }
   try{ audioStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
   catch(e){ showError("ไมค์ถูกบล็อก — เปิดสิทธิ์ใน browser แล้วรีโหลด"); return; }
   showError(""); finalText=""; hybridText=""; hybridQ=[];
