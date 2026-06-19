@@ -24,19 +24,70 @@
 <div class="app">
   <main class="view">
 
-    <!-- ───── HOME (lobby): settings + start + history ───── -->
+    <!-- ───── HOME (lobby): start + history ───── -->
     <div id="viewHome" style="display:none">
       <div class="wrap">
-        <h2 class="bg-gradient-to-r from-teal to-emerald-300 bg-clip-text text-transparent text-3xl font-extrabold" style="margin:0 0 4px">Meeting Assistant</h2>
-        <p style="color:var(--muted);font-size:14px;margin:0 0 18px">เลือก model · ใส่ key · กดเริ่ม</p>
+        <div class="lobby-head">
+          <div>
+            <h2 class="bg-gradient-to-r from-teal to-emerald-300 bg-clip-text text-transparent text-3xl font-extrabold" style="margin:0 0 4px">Meeting Assistant</h2>
+            <p style="color:var(--muted);font-size:14px;margin:0">เลือก model · ใส่ key · กดเริ่ม</p>
+          </div>
+          <button id="settingsBtn" class="gear-btn" title="ตั้งค่า" aria-label="เปิดหน้าตั้งค่า">⚙</button>
+        </div>
 
-        <!-- Settings (expand/collapse) -->
-        <details class="sysaudio" id="settingsWrap" open style="margin-bottom:14px">
-        <summary>⚙ ตั้งค่า · provider · model · key · เสียง</summary>
-        <div id="settings" class="sysaudio-body" style="display:flex;flex-direction:column;align-items:stretch;gap:10px;padding-top:4px">
+        <!-- ───── การ์ดเริ่มแชท (โหมด + stack + ตัวเลือก + ปุ่มเริ่ม) ───── -->
+        <div class="start-card">
+          <div class="start-card-h">เริ่มแชท</div>
+          <div class="sc-field">
+            <div class="lbl">โหมด</div>
+            <div id="homeModes" class="mode-grid">
+              <button type="button" class="mode-card on" data-mode="qa"><span class="mc-ic">🧠</span><span class="mc-body"><span class="mc-t">ถาม AI</span><span class="mc-d">ตอบสดทันที</span></span></button>
+              <button type="button" class="mode-card" data-mode="est"><span class="mc-ic">📊</span><span class="mc-body"><span class="mc-t">ประเมินงาน</span><span class="mc-d">stack · เวลา · ความเสี่ยง</span></span></button>
+            </div>
+          </div>
+          <div class="sc-field">
+            <div class="lbl">Stack / บริบท <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted)">· ว่างได้ (ไม่ pin = AI ตอบกลางๆ)</span></div>
+            <input id="stackCtx" style="width:100%" placeholder="Go, TypeScript, PHP … เว้นว่าง = ตอบทุกภาษาตามคำถาม" />
+          </div>
+          <div class="sc-row2">
+            <div class="sc-field">
+              <div class="lbl">ส่งเมื่อเงียบ</div>
+              <div class="sc-inline">
+                <input id="silenceSec" type="number" min="0.5" max="6" step="0.1" style="width:72px" />
+                <span class="mono" style="font-size:11px;color:var(--muted)">วินาที · default 1.8</span>
+              </div>
+            </div>
+            <div class="sc-field">
+              <div class="lbl">ขนาดตัวอักษร (คำตอบ)</div>
+              <div class="font-row">
+                <input id="fontRange" type="range" min="12" max="40" step="1">
+                <span id="fontVal" class="mono"></span>
+              </div>
+            </div>
+          </div>
+          <button id="startBtn" class="newbtn transition-all hover:brightness-110 active:scale-95"
+            style="width:100%;padding:12px;font-size:15px;font-weight:700;letter-spacing:.02em">▶ เริ่มใหม่</button>
+        </div>
+
+        <div style="margin-top:26px">
+          <div class="lbl" style="margin-bottom:8px">ประวัติ</div>
+          <div id="homeList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───── SETTINGS page ───── -->
+    <div id="viewSettings" style="display:none">
+      <div class="wrap">
+        <div class="settings-page-head">
+          <button class="back-btn" id="settingsBack">← กลับ</button>
+          <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--text)">ตั้งค่า</h2>
+        </div>
+
+        <div id="settings" class="settings-body" style="margin-top:16px">
           <div class="grid">
-            <div>
-              <div class="lbl" style="margin-bottom:6px">PROVIDER</div>
+            <div class="sf">
+              <div class="lbl">PROVIDER</div>
               <select id="provider" style="width:100%">
                 <option value="openrouter">OpenRouter</option>
                 <option value="gemini">Google Gemini</option>
@@ -44,112 +95,73 @@
                 <option value="claude">Anthropic (Claude)</option>
               </select>
             </div>
-            <div>
-              <div class="lbl" style="margin-bottom:6px;display:flex;align-items:center;gap:8px">
+            <div class="sf">
+              <div class="lbl" style="display:flex;align-items:center;gap:6px">
                 <span>MODEL</span>
                 <button id="fetchModels" type="button" class="minibtn" title="โหลดรายชื่อ model จาก provider"
-                  aria-label="โหลดรายชื่อ model จาก provider" style="width:28px;height:28px;font-size:13px;padding:0">↻</button>
+                  aria-label="โหลดรายชื่อ model จาก provider" style="width:24px;height:24px;font-size:12px;padding:0">↻</button>
                 <button id="freeFilter" type="button" class="minibtn" title="กรองเฉพาะ model ฟรี"
-                  style="height:28px;padding:0 10px;font-size:11px;font-weight:700;letter-spacing:0">Free</button>
-                <span id="modelStatus" class="mono" style="font-weight:500;letter-spacing:0;color:var(--muted)"></span>
+                  style="height:24px;padding:0 8px;font-size:11px;font-weight:700;letter-spacing:0">Free</button>
+                <span id="modelStatus" class="mono" style="font-size:10px;letter-spacing:0;color:var(--muted)"></span>
               </div>
               <select id="modelSel" style="width:100%"></select>
               <input id="model" style="width:100%;margin-top:6px;display:none" placeholder="พิมพ์ model id" />
             </div>
           </div>
-          <div>
-            <div class="lbl" style="margin-bottom:6px">API KEY <span id="keyHint" style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)"></span></div>
-            <input id="apikey" type="password" style="width:100%" placeholder="วาง API key ที่นี่" autocomplete="off" />
+          <div class="sf">
+            <div class="lbl">API KEY <span id="keyHint" class="settings-hint-inline"></span></div>
+            <input id="apikey" type="password" style="width:100%" placeholder="วาง API key ที่นี่" autocomplete="off"
+              title="เก็บใน sessionStorage เท่านั้น — ล้างอัตโนมัติเมื่อปิดแท็บ ส่งตรงถึง provider" />
           </div>
-          <div class="row" style="gap:8px;flex-wrap:wrap">
-            <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">🎙 ถอดเสียง</div>
+          <div class="sf-row">
+            <span class="settings-label">🎙 ถอดเสียง</span>
             <div class="seg" id="sttSeg">
-              <button id="sttWeb" class="on" title="Web Speech — สด ทีละคำ (ฟรี, browser เท่านั้น)">สด</button>
-              <button id="sttGemini" title="กดเริ่ม→พูด (เห็นสด)→กดจบ → AI ถอดทั้งคลิปแม่นกว่า (OpenRouter ใช้ credit / provider อื่นใช้ Gemini key)">สด+AI แม่น</button>
-              <button id="sttSoniox" title="Soniox realtime — ถอดสดทีละคำ ไทย+อังกฤษสลับได้ (ใช้ได้ทั้ง browser + desktop, ต้องมี Soniox key)">Soniox สด</button>
+              <button id="sttWeb" class="on" title="Web Speech — สด ทีละคำ ฟรี (browser only)">สด</button>
+              <button id="sttGemini" title="บันทึกทั้งคลิปแล้วให้ AI ถอด — แม่นกว่า สด (OpenRouter ใช้ credit / provider อื่นต้องมี Gemini key)">สด+AI แม่น</button>
+              <button id="sttSoniox" title="Soniox realtime — ทีละคำ ไทย+อังกฤษสลับได้ ต้องมี Soniox key">Soniox สด</button>
             </div>
-            <span id="sttHint" class="mono" style="font-size:11px;color:var(--muted)">สด=ฟรี ทีละคำ · สด+AI=ถอดแม่นตอนจบ · Soniox=ทีละคำ realtime แม่น (เสียตังตามใช้)</span>
+            <span id="sttHint" class="settings-hint"></span>
           </div>
-          <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
-            <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">🎤 ไมโครโฟน</div>
-            <select id="micSel" style="flex:1;min-width:160px" title="เลือกไมค์/อุปกรณ์เข้า (มีผลกับ สด+AI; โหมด สด ใช้ default ของระบบ)"><option value="">ค่าเริ่มต้นของระบบ</option></select>
-            <button id="micRefresh" type="button" class="minibtn" title="โหลดรายชื่อไมค์ (ขออนุญาตเพื่อเห็นชื่อ)" style="width:28px;height:28px;padding:0;font-size:13px">↻</button>
+          <div class="sf-row">
+            <span class="settings-label">🎤 ไมค์</span>
+            <select id="micSel" style="flex:1;min-width:140px" title="เลือกอุปกรณ์เข้า (มีผลกับ สด+AI; สด ใช้ default ระบบ)"><option value="">ค่าเริ่มต้นของระบบ</option></select>
+            <button id="micRefresh" type="button" class="minibtn" title="โหลดรายชื่อไมค์ (ขออนุญาตเพื่อเห็นชื่อ)" style="width:24px;height:24px;padding:0;font-size:12px">↻</button>
           </div>
-          <div class="row" id="audioSrcRow" style="gap:8px;flex-wrap:wrap;align-items:center;display:none">
-            <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">🔊 แหล่งเสียง</div>
+          <div class="sf-row" id="audioSrcRow" style="display:none">
+            <span class="settings-label">🔊 แหล่งเสียง</span>
             <div class="seg" id="audioSrcSeg">
               <button id="asrcMic" class="on" title="ไมโครโฟน">🎤 ไมค์</button>
-              <button id="asrcSys" title="เสียงระบบ (loopback) — ฟังเสียงที่ออกลำโพง/ประชุม โดยไม่ต้อง VB-CABLE; ใช้กับ Soniox สด บน Windows desktop">🔊 เสียงระบบ</button>
+              <button id="asrcSys" title="Loopback — ฟังเสียงออกลำโพง (Windows desktop, Soniox สด)">🔊 ระบบ</button>
             </div>
-            <span class="mono" style="font-size:11px;color:var(--muted)">เสียงระบบ = loopback ที่ออกลำโพง (Windows desktop · ใช้กับ Soniox สด)</span>
           </div>
-          <div id="geminiKeyRow" style="display:none">
-            <div class="lbl" style="margin-bottom:6px">Gemini API key <span style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)">· สำหรับ สด+AI (provider นี้ถอดเสียงเองไม่ได้ — OpenRouter ถอดผ่าน credit ได้เลย)</span></div>
-            <input id="geminiKey" type="password" autocomplete="off" style="width:100%" placeholder="วาง Gemini API key — เก็บใน sessionStorage เท่านั้น (ปิดแท็บแล้วหาย)" />
+          <div id="geminiKeyRow" class="sf" style="display:none">
+            <div class="lbl">Gemini API key <span class="settings-hint-inline">· สด+AI (OpenRouter ไม่ต้องใช้)</span></div>
+            <input id="geminiKey" type="password" autocomplete="off" style="width:100%"
+              placeholder="วาง Gemini API key"
+              title="เก็บใน sessionStorage เท่านั้น — ล้างอัตโนมัติเมื่อปิดแท็บ" />
           </div>
-          <div id="sonioxKeyRow" style="display:none">
-            <div class="lbl" style="margin-bottom:6px">Soniox API key <span style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)">· สำหรับ Soniox สด (realtime ทีละคำ)</span></div>
-            <input id="sonioxKey" type="password" autocomplete="off" style="width:100%" placeholder="วาง Soniox API key — เก็บใน sessionStorage เท่านั้น (ปิดแท็บแล้วหาย)" />
-          </div>
-          <div class="mono" style="font-size:11px;color:var(--muted)">
-            API key เก็บเฉพาะ tab นี้ (ล้างอัตโนมัติเมื่อปิด) · ส่งตรงถึง provider เท่านั้น
+          <div id="sonioxKeyRow" class="sf" style="display:none">
+            <div class="lbl">Soniox API key <span class="settings-hint-inline">· Soniox สด</span></div>
+            <input id="sonioxKey" type="password" autocomplete="off" style="width:100%"
+              placeholder="วาง Soniox API key"
+              title="เก็บใน sessionStorage เท่านั้น — ล้างอัตโนมัติเมื่อปิดแท็บ" />
           </div>
         </div>
 
-        <details class="sysaudio" id="advSettings">
-          <summary>⚙ ตั้งค่าเพิ่มเติม · thinking · หน้าต่างลอย</summary>
-          <div class="sysaudio-body" style="display:flex;flex-direction:column;gap:10px;padding-top:4px">
-            <div class="row" style="gap:8px;flex-wrap:wrap">
-              <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">🧠 คิดก่อนตอบ</div>
-              <button id="thinkBtn" type="button" class="pill" title="เปิด = model คิด/reasoning ก่อนตอบ (ฉลาดขึ้นแต่ช้า+เปลือง token); ปิด = ตอบเร็ว">ปิด</button>
-              <span class="mono" style="font-size:11px;color:var(--muted)">ปิด = เร็ว (default) · เปิด = ฉลาดขึ้นแต่ช้า/เปลือง token</span>
+        <details class="sysaudio adv-settings" id="advSettings" style="margin-top:20px">
+          <summary>ตั้งค่าเพิ่มเติม</summary>
+          <div class="sysaudio-body settings-body">
+            <div class="sf-row">
+              <span class="settings-label">🧠 คิดก่อนตอบ</span>
+              <button id="thinkBtn" type="button" class="pill"
+                title="เปิด = model reasoning ก่อนตอบ (แม่นขึ้นแต่ช้า+เปลือง token) · ปิด = ตอบเร็ว (default)">ปิด</button>
             </div>
-            <div class="row" style="gap:8px;flex-wrap:wrap">
-              <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">🪟 หน้าต่างลอย</div>
-              <span class="mono" style="font-size:11px;color:var(--muted)">หน้าต่างแยกลอยเหนือแอปอื่น (PiP) — ซ่อนจากคนดูได้ถ้าแชร์เฉพาะหน้าต่างอื่น (แชร์ทั้งจอ=ซ่อนไม่ได้) · ต้อง Chrome/Edge 116+</span>
+            <div class="sf-row">
+              <span class="settings-label" title="หน้าต่างแยกลอยเหนือแอปอื่น (PiP) — ซ่อนจากคนดูได้ถ้าแชร์เฉพาะหน้าต่างอื่น · ต้อง Chrome/Edge 116+">🪟 หน้าต่างลอย</span>
+              <span class="settings-hint">PiP — ซ่อนได้ถ้าแชร์เฉพาะหน้าต่าง · Chrome/Edge 116+</span>
             </div>
           </div>
         </details>
-        </details><!-- /#settingsWrap -->
-
-        <!-- ───── การ์ดเริ่มแชท (โหมด + stack + ตัวเลือก + ปุ่มเริ่ม) ───── -->
-        <div class="start-card">
-          <div class="start-card-h">▶ เริ่มแชท</div>
-          <div class="sc-field">
-            <div class="lbl">เลือกโหมด</div>
-            <div id="homeModes" class="mode-grid">
-              <button type="button" class="mode-card on" data-mode="qa"><span class="mc-ic">🧠</span><span class="mc-t">ถาม AI</span><span class="mc-d">ตอบสดทันที</span></button>
-              <button type="button" class="mode-card" data-mode="est"><span class="mc-ic">📊</span><span class="mc-t">ประเมินงาน</span><span class="mc-d">stack · เวลา · ความเสี่ยง</span></button>
-            </div>
-          </div>
-          <div class="sc-field">
-            <div class="lbl">STACK / บริบทผู้ถาม <span style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)">· ว่างได้ (ไม่ pin = AI ตอบกลางๆ)</span></div>
-            <input id="stackCtx" style="width:100%" placeholder="เช่น Go, TypeScript, PHP, Python, Rust, HTML — เว้นว่าง = ตอบทุกภาษาตามคำถาม" />
-          </div>
-          <div class="sc-row2">
-            <div class="sc-field">
-              <div class="lbl">⚡ ส่งเมื่อเงียบ</div>
-              <div class="sc-inline">
-                <input id="silenceSec" type="number" min="0.5" max="6" step="0.1" style="width:80px" />
-                <span class="mono" style="font-size:11px;color:var(--muted)">วินาที · default 1.8</span>
-              </div>
-            </div>
-            <div class="sc-field">
-              <div class="lbl">🔤 ขนาดตัวอักษร (คำตอบ)</div>
-              <div class="font-row">
-                <input id="fontRange" type="range" min="12" max="40" step="1">
-                <span id="fontVal" class="mono"></span>
-              </div>
-            </div>
-          </div>
-          <button id="startBtn" class="newbtn transition-all hover:brightness-110 active:scale-95 shadow-md shadow-teal/30"
-            style="width:100%;padding:13px;font-size:16px">▶ เริ่มใหม่</button>
-        </div>
-
-        <div style="margin-top:26px">
-          <div class="lbl" style="margin-bottom:8px">ประวัติ</div>
-          <div id="homeList"></div>
-        </div>
       </div>
     </div>
 
