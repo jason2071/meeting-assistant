@@ -75,10 +75,12 @@ ipcMain.on("overlay-action", (_e, payload) => {
 });
 
 // ── IPC: overlay window self-control ──
-ipcMain.on("set-opacity", (_e, v) => { if (overlayWin && !overlayWin.isDestroyed()) overlayWin.setOpacity(Math.max(0.2, Math.min(1, +v || 1))); });
-ipcMain.on("set-always-on-top", (_e, b) => { if (overlayWin && !overlayWin.isDestroyed()) overlayWin.setAlwaysOnTop(!!b, "screen-saver"); });
-ipcMain.on("set-content-protection", (_e, b) => { if (overlayWin && !overlayWin.isDestroyed()) overlayWin.setContentProtection(!!b); });
-ipcMain.on("set-ignore-mouse", (_e, b) => { if (overlayWin && !overlayWin.isDestroyed()) overlayWin.setIgnoreMouseEvents(!!b, { forward: true }); });
+// รับเฉพาะจาก overlay window จริง (กัน main renderer / injected content เรียก toggle ความเป็นส่วนตัว เช่น ปิด content-protection)
+const fromOverlay = (e) => overlayWin && !overlayWin.isDestroyed() && BrowserWindow.fromWebContents(e.sender) === overlayWin;
+ipcMain.on("set-opacity", (e, v) => { if (fromOverlay(e)) overlayWin.setOpacity(Math.max(0.2, Math.min(1, +v || 1))); });
+ipcMain.on("set-always-on-top", (e, b) => { if (fromOverlay(e)) overlayWin.setAlwaysOnTop(!!b, "screen-saver"); });
+ipcMain.on("set-content-protection", (e, b) => { if (fromOverlay(e)) overlayWin.setContentProtection(!!b); });
+ipcMain.on("set-ignore-mouse", (e, b) => { if (fromOverlay(e)) overlayWin.setIgnoreMouseEvents(!!b, { forward: true }); });
 
 // single-instance lock — กันเปิดซ้อนหลาย instance (หน้าต่าง always-on-top ของ instance เก่าจะลอยทับ instance ใหม่ คลิกไม่ได้)
 if (!app.requestSingleInstanceLock()) {
@@ -94,12 +96,13 @@ if (!app.requestSingleInstanceLock()) {
     session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(perm === "media"));
 
     // แชร์จอ: Electron ไม่มี picker เองเหมือน browser → getDisplayMedia จะ reject ถ้าไม่ตั้ง handler นี้
-    // useSystemPicker: ใช้ตัวเลือกของ macOS (เลือก screen/หน้าต่างได้ — เลือกเฉพาะหน้าต่างอื่น = ซ่อน overlay จากการแชร์ได้)
-    // fallback: ถ้า OS ไม่รองรับ picker → หยิบ source แรก (จอหลัก) อัตโนมัติ
+    // useSystemPicker: macOS 15+ ใช้ picker ของ OS (เลือก screen/หน้าต่างเอง) → handler นี้ "ไม่ถูกเรียก" เมื่อ picker ทำงาน
+    // handler = fallback (Windows/macOS เก่า): หยิบจอหลัก แต่เฉพาะตอนมาจาก user gesture เท่านั้น (กัน injected content แอบจับจอเงียบ)
     try {
       session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+        if (!request.userGesture) { callback(); return; }   // ไม่ใช่ผู้ใช้กดเอง → deny
         desktopCapturer.getSources({ types: ["screen", "window"] })
-          .then((sources) => { if (sources && sources.length) callback({ video: sources[0] }); else callback(); })
+          .then((sources) => callback(sources && sources.length ? { video: sources[0] } : undefined))
           .catch(() => callback());
       }, { useSystemPicker: true });
     } catch (e) { /* Electron เก่าไม่มี API นี้ */ }

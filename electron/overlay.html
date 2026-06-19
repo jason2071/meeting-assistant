@@ -106,8 +106,8 @@
     $("ovTop").classList.toggle("on", aot); api.setAlwaysOnTop(aot);
     $("ovTop").onclick = () => { aot = !aot; $("ovTop").classList.toggle("on", aot); api.setAlwaysOnTop(aot); lsSet("ov_top", aot ? "1" : "0"); };
 
-    // ── content protection (ซ่อนจากแชร์จอ) toggle (default off) ──
-    let cp = lsGet("ov_cp", "0") === "1";
+    // ── content protection (ซ่อนจากแชร์จอ) toggle (default ON — overlay มีคำตอบ AI ส่วนตัว ไม่ควรติดไปในจอที่แชร์) ──
+    let cp = lsGet("ov_cp", "1") === "1";
     $("ovShield").classList.toggle("on", cp); api.setContentProtection(cp);
     $("ovShield").onclick = () => { cp = !cp; $("ovShield").classList.toggle("on", cp); api.setContentProtection(cp); lsSet("ov_cp", cp ? "1" : "0"); };
 

@@ -12,9 +12,9 @@ function syncOverlay(){
   if(syncOverlay._raf) return;
   syncOverlay._raf=requestAnimationFrame(()=>{ syncOverlay._raf=null; if(floatSink) floatSink(results.innerHTML); });
 }
-function startMirror(sink){
+function startMirror(sink, paintNow=true){
   floatSink=sink;
-  if(floatSink) floatSink(results.innerHTML);
+  if(paintNow && floatSink) floatSink(results.innerHTML);   // Electron: รอ "ready" ค่อย paint (paintNow=false) — overlay window โหลด async
   if(floatObserver) floatObserver.disconnect();
   floatObserver = new MutationObserver(syncOverlay);
   floatObserver.observe(results, {childList:true, subtree:true, characterData:true});
@@ -28,8 +28,8 @@ function stopMirror(){
 function openElectron(){
   electronAPI.openOverlay();
   elecOpen=true;
-  startMirror((html)=>electronAPI.pushOverlayHTML(html));
-  syncFloatControls();
+  // ไม่ eager push — overlay window จะส่ง "ready" กลับ แล้ว handler (ด้านล่าง) paint html+controls แรกเอง (กัน push หาย/ซ้ำ)
+  startMirror((html)=>electronAPI.pushOverlayHTML(html), false);
   updateFloatBtn();
 }
 function closeElectron(){

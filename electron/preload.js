@@ -9,13 +9,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   closeOverlay: () => ipcRenderer.send("close-overlay"),
   pushOverlayHTML: (html) => ipcRenderer.send("push-overlay-html", html),
   pushOverlayControls: (state) => ipcRenderer.send("push-overlay-controls", state),
-  onOverlayAction: (cb) => ipcRenderer.on("overlay-action", (_e, p) => cb(p)),
-  onOverlayClosed: (cb) => ipcRenderer.on("overlay-closed", () => cb()),
+  onOverlayAction: (cb) => { ipcRenderer.removeAllListeners("overlay-action"); ipcRenderer.on("overlay-action", (_e, p) => cb(p)); },
+  onOverlayClosed: (cb) => { ipcRenderer.removeAllListeners("overlay-closed"); ipcRenderer.on("overlay-closed", () => cb()); },
 
   // ── overlay window → main ──
   sendAction: (action, payload) => ipcRenderer.send("overlay-action", { action, payload }),
-  onOverlayHTML: (cb) => ipcRenderer.on("overlay-html", (_e, html) => cb(html)),
-  onOverlayControls: (cb) => ipcRenderer.on("overlay-controls", (_e, s) => cb(s)),
+  onOverlayHTML: (cb) => { ipcRenderer.removeAllListeners("overlay-html"); ipcRenderer.on("overlay-html", (_e, html) => cb(html)); },
+  onOverlayControls: (cb) => { ipcRenderer.removeAllListeners("overlay-controls"); ipcRenderer.on("overlay-controls", (_e, s) => cb(s)); },
 
   // ── overlay window self-control ──
   setOpacity: (v) => ipcRenderer.send("set-opacity", v),
