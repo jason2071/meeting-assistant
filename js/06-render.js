@@ -1,4 +1,4 @@
-// 06-render.js — el/esc/highlight/inline/mdToHtml/renderEstimate + chat bubbles + voice preview + correctText + looseJSON
+// 06-render.js — el/esc/highlight/inline/mdToHtml/renderEstimate + chat bubbles + voice preview + looseJSON
 // (classic script; loaded in numeric order — top-level globals shared across files)
 
 // ── Rendering ──
@@ -188,14 +188,4 @@ function looseJSON(s){
     try{ return JSON.parse(cur); }catch(e){ err=e; }
   }
   throw err;  // ซ่อมไม่ได้ → โยน error ล่าสุดให้เห็น
-}
-
-// LLM post-correction: แก้ ASR ไทยปนศัพท์อังกฤษให้ตรงขึ้น (ใช้ provider/key เดิม) — คืน text เดิมถ้าไม่มี key/ว่าง
-async function correctText(text){
-  const key=keyInp.value.trim(), model=modelInp.value.trim();
-  if(!key || !text.trim()) return text;
-  const maxTokens=Math.min(8192, Math.max(1024, text.length));  // output ≈ ยาวเท่า input → กัน truncate
-  const req=buildRequest(provider,key,model,{system:CORRECT_SYSTEM, text, image:null, json:false, maxTokens});
-  const out=await streamLLM(req,null);
-  return (out||"").trim() || text;
 }

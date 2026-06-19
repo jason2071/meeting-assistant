@@ -21,8 +21,6 @@ function setMode(m){
 
 // ── Toggles ──
 $("autoBtn").onclick=()=>{ autoSend=!autoSend; $("autoBtn").classList.toggle("on",autoSend); $("autoBtn").setAttribute("aria-pressed", String(autoSend)); };
-$("correctBtn").classList.toggle("on", correctVoice); $("correctBtn").setAttribute("aria-pressed", String(correctVoice));
-$("correctBtn").onclick=()=>{ correctVoice=!correctVoice; $("correctBtn").classList.toggle("on",correctVoice); $("correctBtn").setAttribute("aria-pressed", String(correctVoice)); store.set("ma_correct", correctVoice?"1":"0"); };
 // 🧠 thinking toggle (default ปิด)
 function applyThinkUI(){ $("thinkBtn").classList.toggle("on",thinkOn); $("thinkBtn").textContent=thinkOn?"เปิด":"ปิด"; $("thinkBtn").setAttribute("aria-pressed",String(thinkOn)); }
 $("thinkBtn").onclick=()=>{ thinkOn=!thinkOn; store.set("ma_think", thinkOn?"1":"0"); applyThinkUI(); };
@@ -419,12 +417,7 @@ async function voiceSend(){
   if(!text||processing) return;
   processing=true; clearTimeout(silenceTimer); finalText="";
   try{rec&&rec.stop();}catch{}
-  let toSend=text;
-  if(correctVoice){  // แก้คำถอดเสียงด้วย LLM ก่อนส่ง (toggle ✨)
-    if(voiceLiveEl) voiceLiveEl.textContent="✨ กำลังแก้คำ…";
-    try{ toSend=await correctText(text); }catch{ toSend=text; }
-  }
-  await submit(toSend);
+  await submit(text);
   processing=false;
   if(micOn) startRec();
 }
