@@ -80,11 +80,7 @@
           </div>
           <div class="row" style="gap:8px;flex-wrap:wrap">
             <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">🪟 หน้าต่างลอย</div>
-            <div class="seg" id="floatSeg">
-              <button id="floatInpage" class="on" title="แผงลอยในแท็บ พื้นโปร่ง มองทะลุเห็นพื้นหลังได้ (แต่ถ้าแชร์จอ/แท็บนี้ คนดูจะเห็น)">โปร่ง</button>
-              <button id="floatPip" title="หน้าต่างแยก ลอยเหนือแอปอื่น (always-on-top) ซ่อนจากคนดูได้ถ้าแชร์เฉพาะหน้าต่างอื่น — พื้นทึบ มองทะลุไม่ได้">ลอยเหนือ</button>
-            </div>
-            <span class="mono" style="font-size:11px;color:var(--muted)">โปร่ง=มองทะลุได้ · ลอยเหนือ=อยู่เหนือแอปอื่น+ซ่อนตอนแชร์เฉพาะหน้าต่าง (แชร์ทั้งจอ=ซ่อนไม่ได้)</span>
+            <span class="mono" style="font-size:11px;color:var(--muted)">หน้าต่างแยกลอยเหนือแอปอื่น (PiP) — ซ่อนจากคนดูได้ถ้าแชร์เฉพาะหน้าต่างอื่น (แชร์ทั้งจอ=ซ่อนไม่ได้) · ต้อง Chrome/Edge 116+</span>
           </div>
           <div class="row" style="gap:8px;flex-wrap:wrap">
             <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">⚡ ส่งเมื่อเงียบ</div>
@@ -184,26 +180,6 @@
 
   </main>
 </div><!-- /.app -->
-
-<!-- ───── หน้าต่างลอย (in-page overlay) — mirror #results, mode=inpage ───── -->
-<div id="floatPanel" class="float-panel" style="display:none">
-  <div class="float-head" id="floatHead">
-    <span class="float-title">🎤 Meeting</span>
-    <input type="range" id="floatOpacity" class="float-opacity" min="20" max="95" value="55" title="ความโปร่ง" />
-    <button id="floatSwitch" class="float-btn" title="สลับเป็นหน้าต่างลอยเหนือแอปอื่น (PiP)">⇄</button>
-    <button id="floatClose" class="float-btn" title="ปิด">✕</button>
-  </div>
-  <div id="floatResults" class="chat-msgs float-msgs"></div>
-  <div class="float-composer">
-    <button class="fc-mic mic">🎤 เริ่มฟัง</button>
-    <button class="fc-stop pill stopbtn" style="display:none">✂️ ส่งเลย</button>
-    <button class="fc-screen pill">🖥 แชร์จอ</button>
-    <div class="fc-inputrow">
-      <input class="fc-input" placeholder="พิมพ์คำถาม…" />
-      <button class="fc-send send">➤</button>
-    </div>
-  </div>
-</div>
 
 <!-- optional LOCAL-ONLY key config (gitignored). copy config.local.example.js → config.local.js.
      sets window.__MA_KEYS__; used as a fallback only when no key is entered. 404 if absent (harmless). -->
