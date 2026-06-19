@@ -174,21 +174,26 @@
     <!-- ───── CURRENT: chat ───── -->
     <div id="viewCurrent" class="chat-wrap">
       <header class="chat-head">
-        <button class="home-link" id="curHomeLink" title="กลับหน้าหลัก">← หน้าหลัก</button>
-        <div id="dot" class="dot"></div>
-        <span id="curMode" class="mode-badge">🧠 ถาม AI</span>
-        <span id="curTitle" class="mono" style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:28%">Session ใหม่</span>
-        <!-- cold controls (ตั้งครั้งเดียว/ประชุม): lang + auto-send -->
-        <div class="seg" style="margin-left:auto">
-          <button id="thBtn" class="on">ไทย</button>
-          <button id="enBtn">Eng</button>
+        <!-- left group: nav + identity -->
+        <div class="chat-head-left">
+          <button class="home-link" id="curHomeLink" title="กลับหน้าหลัก">← หน้าหลัก</button>
+          <div id="dot" class="dot"></div>
+          <span id="curMode" class="mode-badge">🧠 ถาม AI</span>
+          <span id="curTitle" class="chat-title">Session ใหม่</span>
         </div>
-        <button id="autoBtn" class="pill on" title="ส่งอัตโนมัติหลังเงียบ" aria-label="ส่งอัตโนมัติหลังเงียบ" aria-pressed="true" style="padding:6px 9px">⚡</button>
-        <button id="correctBtn" class="pill" title="แก้คำถอดเสียงด้วย AI ก่อนส่ง (เพิ่ม 1 LLM call)" aria-label="แก้คำถอดเสียงด้วย AI" aria-pressed="false">✨ แก้คำ</button>
-        <button id="floatBtn" class="pill" title="เปิด/ปิดหน้าต่างลอย" aria-label="เปิด/ปิดหน้าต่างลอย" aria-pressed="false">🪟</button>
-        <span id="count" class="mono" style="font-size:11px;color:var(--muted)">0 คำถาม</span>
-        <span id="tok" class="mono" title="token รวมทั้ง session (↑ in · ↓ out)" style="font-size:11px;color:var(--muted)"></span>
-        <button id="clear" class="iconbtn" title="ล้างทั้งหมด" aria-label="ล้างแชททั้งหมด" style="display:none;width:32px;height:32px">🗑</button>
+        <!-- right group: cold controls + stats + clear -->
+        <div class="chat-head-right">
+          <div class="seg">
+            <button id="thBtn" class="on">ไทย</button>
+            <button id="enBtn">Eng</button>
+          </div>
+          <button id="autoBtn" class="pill on" title="ส่งอัตโนมัติหลังเงียบ" aria-label="ส่งอัตโนมัติหลังเงียบ" aria-pressed="true">⚡</button>
+          <button id="correctBtn" class="pill" title="แก้คำถอดเสียงด้วย AI ก่อนส่ง (เพิ่ม 1 LLM call)" aria-label="แก้คำถอดเสียงด้วย AI" aria-pressed="false">✨</button>
+          <button id="floatBtn" class="pill" title="เปิด/ปิดหน้าต่างลอย" aria-label="เปิด/ปิดหน้าต่างลอย" aria-pressed="false">🪟</button>
+          <span id="count" class="chat-stat" title="token รวมทั้ง session (↑ in · ↓ out)">0 คำถาม</span>
+          <span id="tok" class="chat-stat chat-stat-tok"></span>
+          <button id="clear" class="iconbtn" title="ล้างทั้งหมด" aria-label="ล้างแชททั้งหมด" style="display:none;width:32px;height:32px">🗑</button>
+        </div>
       </header>
 
       <div id="results" class="chat-msgs"></div>
