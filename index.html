@@ -154,6 +154,7 @@
         </div>
         <button id="autoBtn" class="pill on" title="ส่งอัตโนมัติหลังเงียบ" aria-label="ส่งอัตโนมัติหลังเงียบ" aria-pressed="true" style="padding:6px 9px">⚡</button>
         <button id="correctBtn" class="pill" title="แก้คำถอดเสียงด้วย AI ก่อนส่ง (เพิ่ม 1 LLM call)" aria-label="แก้คำถอดเสียงด้วย AI" aria-pressed="false">✨ แก้คำ</button>
+        <button id="floatBtn" class="pill" title="เปิด/ปิดหน้าต่างลอย" aria-label="เปิด/ปิดหน้าต่างลอย" aria-pressed="false">🪟</button>
         <span id="count" class="mono" style="font-size:11px;color:var(--muted)">0 คำถาม</span>
         <span id="tok" class="mono" title="token รวมทั้ง session (↑ in · ↓ out)" style="font-size:11px;color:var(--muted)"></span>
         <button id="clear" class="iconbtn" title="ล้างทั้งหมด" aria-label="ล้างแชททั้งหมด" style="display:none;width:32px;height:32px">🗑</button>
@@ -193,6 +194,15 @@
     <button id="floatClose" class="float-btn" title="ปิด">✕</button>
   </div>
   <div id="floatResults" class="chat-msgs float-msgs"></div>
+  <div class="float-composer">
+    <button class="fc-mic mic">🎤 เริ่มฟัง</button>
+    <button class="fc-stop pill stopbtn" style="display:none">✂️ ส่งเลย</button>
+    <button class="fc-screen pill">🖥 แชร์จอ</button>
+    <div class="fc-inputrow">
+      <input class="fc-input" placeholder="พิมพ์คำถาม…" />
+      <button class="fc-send send">➤</button>
+    </div>
+  </div>
 </div>
 
 <!-- optional LOCAL-ONLY key config (gitignored). copy config.local.example.js → config.local.js.

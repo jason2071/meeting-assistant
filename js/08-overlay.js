@@ -33,10 +33,13 @@ function openInpage(){
   const pos = store.get("ma_float_pos");
   if(pos){ try{ const p=JSON.parse(pos); panel.style.left=p.left+"px"; panel.style.top=p.top+"px"; panel.style.right="auto"; panel.style.bottom="auto"; }catch{} }
   startMirror($("floatResults"));
+  syncFloatControls();
+  updateFloatBtn();
 }
 function closeInpage(){
   $("floatPanel").style.display="none";
   if(floatTarget===$("floatResults")) stopMirror();
+  updateFloatBtn();
 }
 
 // ── Document PiP (ลอยเหนือ/ซ่อนตอนแชร์หน้าต่าง) ──
@@ -64,13 +67,18 @@ async function openPip(){
   d.body.className="pip-body";
   const head=d.createElement("div"); head.className="pip-head"; head.textContent="🎤 Meeting Assistant";
   const wrap=d.createElement("div"); wrap.className="chat-msgs pip-msgs"; wrap.id="pipResults";
-  d.body.appendChild(head); d.body.appendChild(wrap);
+  const comp=d.createElement("div"); comp.className="float-composer";
+  comp.innerHTML='<button class="fc-mic mic"></button><button class="fc-stop pill stopbtn" style="display:none"></button><button class="fc-screen pill"></button><div class="fc-inputrow"><input class="fc-input" placeholder="พิมพ์คำถาม…" /><button class="fc-send send">➤</button></div>';
+  d.body.appendChild(head); d.body.appendChild(wrap); d.body.appendChild(comp);
   startMirror(wrap);
-  pipWin.addEventListener("pagehide", ()=>{ stopMirror(); pipWin=null; });
+  wireFloatControls(comp); syncFloatControls();
+  pipWin.addEventListener("pagehide", ()=>{ stopMirror(); pipWin=null; updateFloatBtn(); });
+  updateFloatBtn();
 }
 function closePip(){
   stopMirror();
   if(pipWin){ try{ pipWin.close(); }catch{} pipWin=null; }
+  updateFloatBtn();
 }
 
 // ── เปิด/ปิด (dispatch ตาม floatMode) ──
@@ -79,6 +87,41 @@ function openOverlay(){
   else { closePip(); openInpage(); }
 }
 function closeOverlay(){ closeInpage(); closePip(); }
+function isOverlayOpen(){ return $("floatPanel").style.display!=="none" || (pipWin && !pipWin.closed); }
+function toggleOverlay(){ if(isOverlayOpen()) closeOverlay(); else openOverlay(); }
+function updateFloatBtn(){ const on=isOverlayOpen(); $("floatBtn").classList.toggle("on",on); $("floatBtn").setAttribute("aria-pressed",String(on)); }
+$("floatBtn").onclick=toggleOverlay;
+updateFloatBtn();
+
+// ── control bar ในหน้าต่างลอย: mic / แชร์จอ / input — proxy ไปปุ่มหลัก + submit ──
+function wireFloatControls(scope){
+  const mic=scope.querySelector(".fc-mic"), stop=scope.querySelector(".fc-stop"),
+        screen=scope.querySelector(".fc-screen"), input=scope.querySelector(".fc-input"), send=scope.querySelector(".fc-send");
+  if(mic) mic.onclick=()=>$("micBtn").click();
+  if(stop) stop.onclick=()=>$("stopBtn").click();
+  if(screen) screen.onclick=()=>$("screenBtn").click();
+  const doSend=()=>{ const v=(input&&input.value||"").trim(); if(!v) return; input.value=""; submit(v); };
+  if(send) send.onclick=doSend;
+  if(input) input.addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); doSend(); } });
+}
+// sync ปุ่มในแผง (label/สถานะ on/ซ่อน) ตามปุ่มหลัก — ทั้ง in-page + PiP
+function syncFloatControls(){
+  const scopes=[$("floatPanel")];
+  if(pipWin && !pipWin.closed) scopes.push(pipWin.document.body);
+  scopes.forEach(s=>{
+    if(!s) return;
+    [["fc-mic","micBtn"],["fc-stop","stopBtn"],["fc-screen","screenBtn"]].forEach(([fc,id])=>{
+      const el=s.querySelector("."+fc), src=$(id); if(!el||!src) return;
+      el.textContent=src.textContent;
+      el.style.display=src.style.display;
+      el.classList.toggle("on", src.classList.contains("on"));
+    });
+  });
+}
+// ปุ่มหลักเปลี่ยน (label/class/ซ่อน) → sync แผงตาม (decoupled เหมือน mirror)
+const ctrlObserver=new MutationObserver(()=>syncFloatControls());
+["micBtn","stopBtn","screenBtn"].forEach(id=>ctrlObserver.observe($(id),{attributes:true,childList:true,characterData:true,subtree:true}));
+wireFloatControls($("floatPanel")); syncFloatControls();
 
 // ── โหมด toggle (segmented บน home + ปุ่ม ⇄ บนแผง) ──
 function applyFloatModeUI(){
