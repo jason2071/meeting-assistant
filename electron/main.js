@@ -82,6 +82,47 @@ const fromOverlay = (e) => overlayWin && !overlayWin.isDestroyed() && BrowserWin
 ipcMain.on("set-always-on-top", (e, b) => { if (fromOverlay(e)) overlayWin.setAlwaysOnTop(!!b, "screen-saver"); });
 ipcMain.on("set-content-protection", (e, b) => { if (fromOverlay(e)) overlayWin.setContentProtection(!!b); });
 
+// ── source picker (Windows/macOS เก่า ที่ไม่มี system picker) ──
+// getSources(+thumbnail) → เปิด picker window ให้ผู้ใช้เลือก → callback({video: source}) | callback() (deny)
+let pickerWin = null;
+function pickSource(callback) {
+  desktopCapturer.getSources({ types: ["screen", "window"], thumbnailSize: { width: 320, height: 200 }, fetchWindowIcons: true })
+    .then((sources) => {
+      if (!sources || !sources.length) { callback(); return; }
+      if (pickerWin && !pickerWin.isDestroyed()) pickerWin.close();
+      const list = sources.map((s) => ({
+        id: s.id, name: s.name,
+        thumb: s.thumbnail ? s.thumbnail.toDataURL() : null,
+        icon: s.appIcon ? s.appIcon.toDataURL() : null,
+        isScreen: s.id.startsWith("screen:"),
+      }));
+      pickerWin = new BrowserWindow({
+        width: 780, height: 580, parent: mainWin && !mainWin.isDestroyed() ? mainWin : undefined, modal: true,
+        title: "เลือกสิ่งที่จะแชร์", backgroundColor: "#0F1419", minimizable: false, maximizable: false,
+        webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
+      });
+      pickerWin.setMenuBarVisibility(false);
+      pickerWin.setAlwaysOnTop(true, "screen-saver");   // ลอยเหนือ overlay (always-on-top เหมือนกัน) + เป็น modal/focused
+      pickerWin.loadFile(path.join(__dirname, "picker.html"));
+
+      let done = false;
+      const onChoose = (e, id) => { if (BrowserWindow.fromWebContents(e.sender) === pickerWin) finish(id); };
+      function finish(sourceId) {
+        if (done) return; done = true;
+        ipcMain.removeListener("picker-choose", onChoose);
+        const chosen = sources.find((s) => s.id === sourceId);
+        callback(chosen ? { video: chosen } : undefined);   // ไม่เจอ/ยกเลิก → undefined = deny
+        if (pickerWin && !pickerWin.isDestroyed()) pickerWin.close();
+      }
+      ipcMain.on("picker-choose", onChoose);
+      pickerWin.webContents.on("did-finish-load", () => {
+        if (pickerWin && !pickerWin.isDestroyed()) pickerWin.webContents.send("picker-sources", list);
+      });
+      pickerWin.on("closed", () => { pickerWin = null; if (!done) { done = true; ipcMain.removeListener("picker-choose", onChoose); callback(); } });
+    })
+    .catch(() => callback());
+}
+
 // single-instance lock — กันเปิดซ้อนหลาย instance (หน้าต่าง always-on-top ของ instance เก่าจะลอยทับ instance ใหม่ คลิกไม่ได้)
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -96,15 +137,12 @@ if (!app.requestSingleInstanceLock()) {
     session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(perm === "media"));
 
     // แชร์จอ: Electron ไม่มี picker เองเหมือน browser → getDisplayMedia จะ reject ถ้าไม่ตั้ง handler นี้
-    // useSystemPicker: macOS 15+ ใช้ picker ของ OS (เลือก screen/หน้าต่างเอง) → handler นี้ "ไม่ถูกเรียก" เมื่อ picker ทำงาน
-    // handler = fallback (Windows/macOS เก่า): หยิบจอหลัก. ไม่ gate userGesture เพราะ overlay control bar เรียกผ่าน
-    //   $("screenBtn").click() (programmatic = ไม่มี user activation) → gate จะทำ Windows แชร์จอพัง.
-    //   ภัย injected-capture กันด้วย CSP connect-src (frame exfil ออกไม่ได้) + content-protection ON (overlay ไม่ติดจอ).
+    // useSystemPicker: macOS 15+ ใช้ picker ของ OS → handler นี้ "ไม่ถูกเรียก" เมื่อ picker ทำงาน
+    // handler = fallback (Windows/macOS เก่า): เปิด picker เอง(picker.html) ให้ผู้ใช้เลือก screen/หน้าต่าง
+    //   (กัน auto-grant จอหลักทั้งจอ — รองรับหลายจอ + เลือกหน้าต่างเดียวให้ overlay ไม่ติด)
     try {
       session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
-        desktopCapturer.getSources({ types: ["screen", "window"] })
-          .then((sources) => callback(sources && sources.length ? { video: sources[0] } : undefined))
-          .catch(() => callback());
+        pickSource(callback);
       }, { useSystemPicker: true });
     } catch (e) { /* Electron เก่าไม่มี API นี้ */ }
 

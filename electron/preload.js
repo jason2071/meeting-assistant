@@ -21,4 +21,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setAlwaysOnTop: (b) => ipcRenderer.send("set-always-on-top", b),
   setContentProtection: (b) => ipcRenderer.send("set-content-protection", b),
   close: () => ipcRenderer.send("close-overlay"),
+
+  // ── source picker window ──
+  onPickerSources: (cb) => { ipcRenderer.removeAllListeners("picker-sources"); ipcRenderer.on("picker-sources", (_e, list) => cb(list)); },
+  pickerChoose: (id) => ipcRenderer.send("picker-choose", id),
 });

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <!-- CSP: thumbnail = data: URL; ไม่มี network ออก -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'" />
+  <title>เลือกสิ่งที่จะแชร์</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    html, body { margin:0; height:100vh; background:var(--bg); color:var(--text);
+      font-family:Inter,system-ui,-apple-system,sans-serif; display:flex; flex-direction:column; }
+    .pk-head { flex:none; padding:12px 16px; font-size:14px; font-weight:700; color:var(--teal);
+      border-bottom:1px solid var(--border); background:var(--panel2); }
+    .pk-sec { font-size:11px; font-weight:700; letter-spacing:1px; color:var(--muted);
+      text-transform:uppercase; margin:14px 4px 8px; }
+    .pk-body { flex:1; overflow-y:auto; padding:8px 16px 16px; }
+    .pk-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:10px; }
+    .pk-card { background:var(--panel); border:1px solid var(--border); border-radius:10px;
+      overflow:hidden; cursor:pointer; transition:border-color .12s, transform .08s; text-align:left; padding:0; color:inherit; }
+    .pk-card:hover { border-color:var(--teal); transform:translateY(-1px); }
+    .pk-card:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
+    .pk-thumb { width:100%; aspect-ratio:16/10; object-fit:cover; background:#000; display:block; }
+    .pk-meta { display:flex; align-items:center; gap:7px; padding:8px 10px; }
+    .pk-icon { width:16px; height:16px; flex:none; border-radius:3px; }
+    .pk-name { font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pk-foot { flex:none; display:flex; justify-content:flex-end; gap:8px; padding:10px 16px;
+      border-top:1px solid var(--border); background:var(--panel2); }
+    .pk-empty { color:var(--muted); font-size:13px; padding:24px 4px; }
+  </style>
+</head>
+<body>
+  <div class="pk-head">🖥 เลือกหน้าจอหรือหน้าต่างที่จะแชร์</div>
+  <div class="pk-body" id="pkBody"><div class="pk-empty">กำลังโหลด…</div></div>
+  <div class="pk-foot"><button class="pill" id="pkCancel">ยกเลิก</button></div>
+
+  <script>
+    const api = window.electronAPI;
+    const body = document.getElementById("pkBody");
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
+      { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+
+    function card(s) {
+      const b = document.createElement("button");
+      b.className = "pk-card";
+      b.title = s.name || "";
+      b.innerHTML =
+        '<img class="pk-thumb" src="' + (s.thumb || "") + '" alt="" />' +
+        '<div class="pk-meta">' +
+          (s.icon ? '<img class="pk-icon" src="' + s.icon + '" alt="" />' : "") +
+          '<span class="pk-name">' + esc(s.name) + "</span>" +
+        "</div>";
+      b.onclick = () => api.pickerChoose(s.id);
+      return b;
+    }
+
+    api.onPickerSources((list) => {
+      body.innerHTML = "";
+      if (!list || !list.length) { body.innerHTML = '<div class="pk-empty">ไม่พบหน้าจอ/หน้าต่าง</div>'; return; }
+      const screens = list.filter((s) => s.isScreen);
+      const windows = list.filter((s) => !s.isScreen);
+      const section = (title, items) => {
+        if (!items.length) return;
+        const h = document.createElement("div"); h.className = "pk-sec"; h.textContent = title; body.appendChild(h);
+        const g = document.createElement("div"); g.className = "pk-grid";
+        items.forEach((s) => g.appendChild(card(s)));
+        body.appendChild(g);
+      };
+      section("หน้าจอ", screens);
+      section("หน้าต่าง", windows);
+    });
+
+    // ยกเลิก = ปิดหน้าต่าง → main ตีความเป็น deny (callback() ใน on "closed")
+    document.getElementById("pkCancel").onclick = () => window.close();
+  </script>
+</body>
+</html>
