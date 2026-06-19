@@ -215,7 +215,7 @@ function buildRec(){
 function startRec(){ if(!rec) rec=buildRec(); if(!rec){ $("supportWarn").style.display="flex"; return; } rec.lang=lang; try{rec.start();}catch{} }
 // toggle เริ่ม/หยุด (เหมือน gemini): หยุด=หยุด recognizer เฉยๆ (เก็บ finalText+preview, ไม่ lock); เริ่ม=ฟังต่อ/สะสม buffer
 function startWebListen(){ showError(""); micOn=true; stopped=false; startRec(); setMicUI(); refreshStatus(); }
-function stopWebListen(){ micOn=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} setMicUI(); refreshStatus(); }
+function stopWebListen(){ micOn=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} if(!finalText.trim()) clearVoicePreview(); setMicUI(); refreshStatus(); }
 // ล็อก/ปลดล็อก composer (stop → session view ได้อย่างเดียว)
 function lockComposer(lock){ $("composer").style.display = lock?"none":""; $("roNote").style.display = lock?"block":"none"; }
 // reset → กลับ idle (ปุ่ม+composer กลับมา) ใช้ตอนเริ่ม session ใหม่
@@ -278,8 +278,10 @@ async function toggleGeminiRecord(){
     recOn=false; hybridRec=false; clearTimeout(silenceTimer);
     try{ rec && rec.stop(); }catch{}
     stopVad();
-    try{ mediaRec && mediaRec.state!=="inactive" && mediaRec.stop(); }catch{}   // → _hybridClipDone ถอด+ส่งคลิปท้าย
+    const willFinalize = mediaRec && mediaRec.state!=="inactive";
+    try{ if(willFinalize) mediaRec.stop(); }catch{}   // → _hybridClipDone ถอด+ส่งคลิปท้าย (เคลียร์ preview เอง)
     try{ audioStream && audioStream.getTracks().forEach(t=>t.stop()); }catch{}
+    if(!willFinalize) clearVoicePreview();   // ไม่มีคลิปจะ finalize → เคลียร์ "(กำลังฟัง…)" ที่ค้าง
     setMicUI(); refreshStatus(); return;
   }
   if(typeof MediaRecorder==="undefined"){ showError("เบราว์เซอร์นี้ไม่รองรับ MediaRecorder"); return; }
