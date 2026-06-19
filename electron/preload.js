@@ -25,4 +25,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // ── source picker window ──
   onPickerSources: (cb) => { ipcRenderer.removeAllListeners("picker-sources"); ipcRenderer.on("picker-sources", (_e, list) => cb(list)); },
   pickerChoose: (id) => ipcRenderer.send("picker-choose", id),
+
+  // ── loopback (ฟังเสียงระบบ): บอก main ว่า getDisplayMedia ครั้งถัดไป = loopback ───
+  prepLoopback: () => ipcRenderer.send("prep-loopback"),
 });
