@@ -102,6 +102,20 @@
   .seg button.on { background:var(--teal); color:#06231F; }
   .seg button:focus-visible { outline:2px solid #fff; outline-offset:2px; }
   .warn { color:var(--amber); font-size:12px; display:flex; gap:8px; align-items:center; margin-bottom:12px; }
+  /* inline alert banner — slim, aligned to composer, collapses cleanly via display:none */
+  .inline-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border-left: 3px solid var(--amber);
+    background: rgba(240,169,59,.07);
+    color: var(--amber);
+    font-size: 12px;
+    line-height: 1.4;
+  }
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   @media (max-width:560px){ .grid{ grid-template-columns:1fr; } }
   a { color:var(--teal); }
