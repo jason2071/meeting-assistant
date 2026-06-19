@@ -109,6 +109,7 @@ function showView(name){
   viewName=name;
   // chat views ต้องเป็น flex (column) ให้ header/composer fix + messages scroll; block จะทับ .chat-wrap พัง
   $("viewHome").style.display = name==="home"?"block":"none";
+  $("viewSettings").style.display = name==="settings"?"block":"none";
   $("viewCurrent").style.display = name==="current"?"flex":"none";
   $("viewOld").style.display = name==="old"?"flex":"none";
   renderSessions();
@@ -131,13 +132,10 @@ function sessClick(e){
 homeListEl.addEventListener("click", sessClick);
 $("startBtn").onclick=()=>{ setMode(homeMode); newSession(); openOverlay(); };  // โหมดที่เลือกบนหน้าหลัก → ล็อกต่อ session + เปิดหน้าต่างลอย
 $("curHomeLink").onclick=()=>{ closeOverlay(); showView("home"); };
+$("settingsBtn").onclick=()=>showView("settings");
+$("settingsBack").onclick=()=>showView("home");
 
-// ── Settings panel expand/collapse (persist) ──
-(function(){
-  const sw=$("settingsWrap"); if(!sw) return;
-  if(store.get("ma_settings_open")==="0") sw.open=false;
-  sw.addEventListener("toggle",()=>store.set("ma_settings_open", sw.open?"1":"0"));
-})();
+// ── Settings panel expand/collapse (persist) — #settingsWrap removed; settings is now its own view ──
 
 // ── Font size ──
 let fontPx = +store.get("ma_fontsize")||14;
