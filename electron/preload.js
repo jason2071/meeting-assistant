@@ -18,9 +18,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onOverlayControls: (cb) => { ipcRenderer.removeAllListeners("overlay-controls"); ipcRenderer.on("overlay-controls", (_e, s) => cb(s)); },
 
   // ── overlay window self-control ──
-  setOpacity: (v) => ipcRenderer.send("set-opacity", v),
   setAlwaysOnTop: (b) => ipcRenderer.send("set-always-on-top", b),
   setContentProtection: (b) => ipcRenderer.send("set-content-protection", b),
-  setIgnoreMouse: (b) => ipcRenderer.send("set-ignore-mouse", b),
   close: () => ipcRenderer.send("close-overlay"),
 });

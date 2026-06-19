@@ -45,9 +45,11 @@ function createOverlay() {
       sandbox: true,   // overlay รับ #results HTML ดิบผ่าน IPC → sandbox จำกัด blast radius เป็น DOM เท่านั้น
     },
   });
-  overlayWin.setAlwaysOnTop(true, "floating");
+  overlayWin.setAlwaysOnTop(true, "screen-saver");   // ระดับเดียวกับ set-always-on-top (ลอยสูงสุด)
   if (process.platform === "darwin") overlayWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   overlayWin.loadFile(path.join(__dirname, "overlay.html"));
+  // โหลด overlay ไม่สำเร็จ → ปิดทิ้ง เพื่อให้ "overlay-closed" ยิงกลับ → renderer แก้ elecOpen ไม่ให้ค้าง true
+  overlayWin.webContents.on("did-fail-load", () => destroyOverlay());
   overlayWin.on("closed", () => {
     overlayWin = null;
     if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("overlay-closed");
@@ -77,10 +79,8 @@ ipcMain.on("overlay-action", (_e, payload) => {
 // ── IPC: overlay window self-control ──
 // รับเฉพาะจาก overlay window จริง (กัน main renderer / injected content เรียก toggle ความเป็นส่วนตัว เช่น ปิด content-protection)
 const fromOverlay = (e) => overlayWin && !overlayWin.isDestroyed() && BrowserWindow.fromWebContents(e.sender) === overlayWin;
-ipcMain.on("set-opacity", (e, v) => { if (fromOverlay(e)) overlayWin.setOpacity(Math.max(0.2, Math.min(1, +v || 1))); });
 ipcMain.on("set-always-on-top", (e, b) => { if (fromOverlay(e)) overlayWin.setAlwaysOnTop(!!b, "screen-saver"); });
 ipcMain.on("set-content-protection", (e, b) => { if (fromOverlay(e)) overlayWin.setContentProtection(!!b); });
-ipcMain.on("set-ignore-mouse", (e, b) => { if (fromOverlay(e)) overlayWin.setIgnoreMouseEvents(!!b, { forward: true }); });
 
 // single-instance lock — กันเปิดซ้อนหลาย instance (หน้าต่าง always-on-top ของ instance เก่าจะลอยทับ instance ใหม่ คลิกไม่ได้)
 if (!app.requestSingleInstanceLock()) {

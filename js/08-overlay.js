@@ -24,7 +24,7 @@ function stopMirror(){
   floatSink=null;
 }
 
-// ── Electron: หน้าต่างลอยแยก (transparent ความจางคุมด้วย win.setOpacity ฝั่ง main) ──
+// ── Electron: หน้าต่างลอยแยก (transparent — ความจางคุมด้วย CSS bg alpha ฝั่ง overlay.html) ──
 function openElectron(){
   electronAPI.openOverlay();
   elecOpen=true;
@@ -124,7 +124,8 @@ const ctrlObserver=new MutationObserver(()=>syncFloatControls());
 // ── Electron: รับ action จากหน้าต่างลอย + sync state ตอน overlay พร้อม ──
 if(IS_ELECTRON){
   electronAPI.onOverlayAction(({action,payload})=>{
-    if(action==="ready"){ if(floatSink) floatSink(results.innerHTML); syncFloatControls(); return; }
+    // "ready" = overlay window พร้อมจริง → ยืนยัน elecOpen (authoritative) แล้ว paint แรก
+    if(action==="ready"){ elecOpen=true; if(floatSink) floatSink(results.innerHTML); syncFloatControls(); updateFloatBtn(); return; }
     if(action==="mic") $("micBtn").click();
     else if(action==="stop") $("stopBtn").click();
     else if(action==="screen") $("screenBtn").click();
