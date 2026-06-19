@@ -97,10 +97,11 @@ if (!app.requestSingleInstanceLock()) {
 
     // แชร์จอ: Electron ไม่มี picker เองเหมือน browser → getDisplayMedia จะ reject ถ้าไม่ตั้ง handler นี้
     // useSystemPicker: macOS 15+ ใช้ picker ของ OS (เลือก screen/หน้าต่างเอง) → handler นี้ "ไม่ถูกเรียก" เมื่อ picker ทำงาน
-    // handler = fallback (Windows/macOS เก่า): หยิบจอหลัก แต่เฉพาะตอนมาจาก user gesture เท่านั้น (กัน injected content แอบจับจอเงียบ)
+    // handler = fallback (Windows/macOS เก่า): หยิบจอหลัก. ไม่ gate userGesture เพราะ overlay control bar เรียกผ่าน
+    //   $("screenBtn").click() (programmatic = ไม่มี user activation) → gate จะทำ Windows แชร์จอพัง.
+    //   ภัย injected-capture กันด้วย CSP connect-src (frame exfil ออกไม่ได้) + content-protection ON (overlay ไม่ติดจอ).
     try {
-      session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-        if (!request.userGesture) { callback(); return; }   // ไม่ใช่ผู้ใช้กดเอง → deny
+      session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
         desktopCapturer.getSources({ types: ["screen", "window"] })
           .then((sources) => callback(sources && sources.length ? { video: sources[0] } : undefined))
           .catch(() => callback());
