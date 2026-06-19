@@ -20,8 +20,7 @@
       "index.html",
       "styles.css",
       "js/**",
-      "electron/**",
-      "config.local.js"
+      "electron/**"
     ],
     "mac": {
       "category": "public.app-category.productivity",

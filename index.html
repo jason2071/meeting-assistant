@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!-- CSP: connect-src จำกัดเฉพาะ provider hosts → กัน key exfil แม้ HTML/CDN ถูก inject -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.anthropic.com https://api.openai.com https://openrouter.ai https://generativelanguage.googleapis.com" />
 <title>Meeting Assistant</title>
 <!-- Tailwind Play CDN (dev — needs internet on load; "not for production" warning is expected) -->
 <script src="https://cdn.tailwindcss.com"></script>

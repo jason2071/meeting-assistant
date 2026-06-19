@@ -7,6 +7,12 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..");
 let mainWin = null, overlayWin = null;
 
+// security: ทุก renderer — ห้ามเปิดหน้าต่างใหม่ + ห้าม navigate ออกจากไฟล์ที่โหลด (กัน redirect ไป origin อื่น)
+app.on("web-contents-created", (_e, contents) => {
+  contents.setWindowOpenHandler(() => ({ action: "deny" }));
+  contents.on("will-navigate", (ev) => ev.preventDefault());
+});
+
 function createMain() {
   mainWin = new BrowserWindow({
     width: 1100, height: 780, minWidth: 720, minHeight: 540,
@@ -17,6 +23,7 @@ function createMain() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,   // renderer รัน HTML จาก LLM + ยิง LLM API ตรง → sandbox กัน XSS แตะ Node primitives
     },
   });
   mainWin.loadFile(path.join(ROOT, "index.html"));
@@ -35,6 +42,7 @@ function createOverlay() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,   // overlay รับ #results HTML ดิบผ่าน IPC → sandbox จำกัด blast radius เป็น DOM เท่านั้น
     },
   });
   overlayWin.setAlwaysOnTop(true, "floating");
@@ -81,8 +89,9 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
-    // อนุญาต mic / screen share / etc. (เทียบเท่า browser permission prompt)
-    session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(true));
+    // อนุญาตเฉพาะ mic ("media") — screen share ไปทาง setDisplayMediaRequestHandler แยก
+    // กัน injected content auto-grant geolocation/notifications ฯลฯ
+    session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(perm === "media"));
 
     // แชร์จอ: Electron ไม่มี picker เองเหมือน browser → getDisplayMedia จะ reject ถ้าไม่ตั้ง handler นี้
     // useSystemPicker: ใช้ตัวเลือกของ macOS (เลือก screen/หน้าต่างได้ — เลือกเฉพาะหน้าต่างอื่น = ซ่อน overlay จากการแชร์ได้)
