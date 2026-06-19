@@ -192,15 +192,31 @@
   #viewHome { height:100%; overflow-y:auto; }
   /* chat layout */
   .chat-wrap { height:100%; display:flex; flex-direction:column; }
-  .chat-head { display:flex; align-items:center; gap:8px; padding:0 16px; flex:none; height:48px;
+  /* single-row header — fixed 48px, no grow, overflow hidden so injected <h2> can't blow it up.
+     padding-top:4px = breathing room from OS titlebar / Electron menu bar. */
+  .chat-head { display:flex; align-items:center; gap:8px; padding:4px 16px 0; flex:none;
+    height:48px; max-height:48px; overflow:hidden; flex-wrap:nowrap;
     border-bottom:1px solid var(--border); background:var(--panel); }
+  /* suppress <h2> injected by openSession() into #oldMeta — treat as compact metadata span */
+  .chat-head h2 { font-size:12px; font-weight:500; color:var(--muted); font-style:italic;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    min-width:0; flex-shrink:1; max-width:200px; }
+  /* .sub = "mode · date · provider · model · N คำถาม" — must not wrap */
+  .chat-head .sub { font-size:11px; color:var(--muted); opacity:.65;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    min-width:0; flex-shrink:1; max-width:340px; }
+  /* back-btn inside header: no margin-bottom (it's a flex item, not block) */
+  .chat-head .back-btn { margin-bottom:0; flex-shrink:0; }
   .chat-head-left { display:flex; align-items:center; gap:8px; min-width:0; flex:1; overflow:hidden; }
-  .chat-head-right { display:flex; align-items:center; gap:5px; flex-shrink:0; padding-left:10px;
-    border-left:1px solid var(--border); }
+  .chat-head-right { display:flex; align-items:center; gap:5px; flex-shrink:0; min-width:0;
+    overflow:hidden; padding-left:10px; border-left:1px solid var(--border); }
   .chat-head-right .pill { padding:5px 8px; font-size:12px; }
   .chat-head-right .seg button { padding:4px 9px; }
+  /* title: flex-truncated, no fixed max-width so it uses available space */
   .chat-title { font-size:12px; font-weight:500; color:var(--muted); white-space:nowrap;
-    overflow:hidden; text-overflow:ellipsis; max-width:220px; font-style:italic;
+    overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1 1 0; font-style:italic;
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
   .chat-stat { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:var(--muted);
     opacity:.65; white-space:nowrap; }
