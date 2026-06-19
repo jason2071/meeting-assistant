@@ -67,25 +67,4 @@ $("stackCtx").value = store.get("ma_stack") || "";
 $("stackCtx").oninput = ()=>store.set("ma_stack", $("stackCtx").value.trim());
 loadProvider(provider);
 
-// ── ตรวจอุปกรณ์เสียง (ช่วยตั้ง BlackHole ให้ฟังเสียงผู้ถามจากระบบ) ──
-// หมายเหตุ: Web Speech เลือก device เองไม่ได้ — ตรวจได้แค่ว่ามี virtual device ติดตั้งไหม, ที่เหลือตั้งใน Chrome/OS
-async function checkAudioDevices(){
-  const box=$("sysAudioResult"); box.innerHTML=`<span style="color:var(--muted)">กำลังตรวจ…</span>`;
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});  // ขอ permission เพื่ออ่านชื่อ device
-    stream.getTracks().forEach(t=>t.stop());
-    const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
-    const isVirtual=(l)=>/blackhole|aggregate|virtual|loopback|soundflower/i.test(l);
-    const found=devs.filter(d=>isVirtual(d.label));
-    const list=`<ul>${devs.map(d=>`<li class="${isVirtual(d.label)?"hit":""}">${esc(d.label||"(ไม่ทราบชื่อ)")}</li>`).join("")}</ul>`;
-    const head = found.length
-      ? `<span class="ok">✅ เจอ virtual device: ${esc(found.map(d=>d.label).join(", "))} — ตั้งเป็น <b>Input</b> ของ Chrome แล้วรีโหลด</span>`
-      : `<span class="warn2">⚠ ไม่พบ virtual audio device — ติดตั้ง BlackHole ก่อน (ดูขั้นตอนด้านบน)</span>`;
-    box.innerHTML = head + list + `<div class="mono" style="color:var(--muted);margin-top:6px">แอปบังคับ device ไม่ได้ — Web Speech ใช้ Input default ของ Chrome ต้องตั้งเอง</div>`;
-  }catch(e){
-    box.innerHTML=`<span class="warn2">⚠ ต้องอนุญาตไมค์เพื่อตรวจ device (${esc(e.name||e.message||"error")})</span>`;
-  }
-}
-$("checkAudioBtn").onclick=checkAudioDevices;
-
 // settings อยู่หน้าหลักแล้ว ไม่มีปุ่ม gear

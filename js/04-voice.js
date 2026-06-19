@@ -39,6 +39,23 @@ function setLang(l){ lang=l; $("thBtn").classList.toggle("on",l==="th-TH"); $("e
 // ── STT engine: web (Web Speech, live ทีละคำ) | gemini (batch push-to-record, แม่นกว่า) ──
 let sttEngine = store.get("ma_stt")||"web";
 let recOn=false, mediaRec=null, audioChunks=[], audioStream=null;  // gemini push-to-record state
+// ── เลือกไมโครโฟน (input device) — มีผลกับ สด+AI (getUserMedia); Web Speech ใช้ default ของระบบ ──
+let micDeviceId = store.get("ma_mic")||"";
+async function loadMics(){
+  const sel=$("micSel"); if(!sel||!navigator.mediaDevices) return;
+  try{
+    const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
+    sel.innerHTML='<option value="">ค่าเริ่มต้นของระบบ</option>'+
+      devs.map(d=>`<option value="${d.deviceId}">${esc(d.label||("ไมค์ "+(d.deviceId||"").slice(0,6)))}</option>`).join("");
+    if([...sel.options].some(o=>o.value===micDeviceId)) sel.value=micDeviceId; else { micDeviceId=""; sel.value=""; }
+  }catch{}
+}
+if($("micSel")) $("micSel").onchange=()=>{ micDeviceId=$("micSel").value; store.set("ma_mic",micDeviceId); };
+if($("micRefresh")) $("micRefresh").onclick=async()=>{
+  try{ const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getTracks().forEach(t=>t.stop()); }catch{}
+  loadMics();
+};
+loadMics();  // โหลดครั้งแรก (ชื่ออาจว่างจนกว่าจะอนุญาต → กด ↻ หลังให้สิทธิ์)
 let hybridRec=false, hybridText="";  // hybrid: Web Speech live preview ระหว่างอัด (Gemini ถอดจริงตอนจบ)
 // ช่อง Gemini key แยก: โผล่เฉพาะตอนใช้ สด+AI แล้ว backend ต้องใช้ Gemini key (provider=openai/claude)
 // — provider=gemini ใช้ช่อง key หลัก, provider=openrouter ถอดผ่าน credit (ไม่ต้องใส่ Gemini แยก)
@@ -46,22 +63,40 @@ function syncGeminiKeyRow(){
   const need = sttEngine==="gemini" && sttBackend().via==="gemini" && provider!=="gemini";
   $("geminiKeyRow").style.display = need ? "" : "none";
   if(need) $("geminiKey").value = getKey("gemini");
+  const sxRow=$("sonioxKeyRow");   // Soniox key row โผล่เฉพาะตอนเลือก Soniox
+  if(sxRow){ const ns=sttEngine==="soniox"; sxRow.style.display=ns?"":"none"; if(ns) $("sonioxKey").value=getKey("soniox"); }
 }
 $("geminiKey").oninput = ()=>skey.set(keyKey("gemini"), $("geminiKey").value.trim());
-function applySttUI(){ $("sttWeb").classList.toggle("on",sttEngine==="web"); $("sttGemini").classList.toggle("on",sttEngine==="gemini"); syncGeminiKeyRow(); }
+if($("sonioxKey")) $("sonioxKey").oninput = ()=>skey.set(keyKey("soniox"), $("sonioxKey").value.trim());
+function applySttUI(){
+  $("sttWeb").classList.toggle("on",sttEngine==="web");
+  $("sttGemini").classList.toggle("on",sttEngine==="gemini");
+  if($("sttSoniox")) $("sttSoniox").classList.toggle("on",sttEngine==="soniox");
+  syncGeminiKeyRow();
+}
 function setStt(e){
   if(micOn||recOn) return;   // กำลังฟัง/อัด ห้ามสลับ
   if(e==="gemini" && !sttBackend().key){ showError("โหมดนี้ต้องมี key — ใช้ provider OpenRouter (มี credit) หรือใส่ Gemini key"); return; }
   sttEngine=e; store.set("ma_stt",e); applySttUI(); setMicUI();
+  if(e==="soniox" && !getKey("soniox")) showError("ใส่ Soniox API key ด้านล่างก่อนเริ่มฟัง");
 }
 $("sttWeb").onclick=()=>setStt("web");
 $("sttGemini").onclick=()=>setStt("gemini");
+if($("sttSoniox")) $("sttSoniox").onclick=()=>setStt("soniox");
 applySttUI();
+
+// Electron (desktop): Web Speech (SpeechRecognition) ใช้ไม่ได้ (error network) → ซ่อนปุ่ม "สด"
+// เหลือ "สด+AI" (gemini near-live) + "Soniox สด" (realtime ทีละคำ) ที่ทำงานได้ใน Electron
+if(window.electronAPI && window.electronAPI.isElectron){
+  if(sttEngine==="web"){ sttEngine="gemini"; store.set("ma_stt","gemini"); applySttUI(); }
+  $("sttWeb").style.display="none";
+  const hint=$("sttHint"); if(hint) hint.textContent="desktop: 'Soniox สด' (ทีละคำ realtime) หรือ 'สด+AI' (ถอดแม่นตอนจบ) — Web Speech ใช้ใน Electron ไม่ได้";
+}
 
 // ── status ── (showError ย้ายไป js/02 เพราะ fetchModels ใน js/03 เรียกตอน load ก่อน js/04)
 function refreshStatus(){
   const parts=[];
-  if(recOn) parts.push('<span style="color:var(--red)">● กำลังฟัง (สด+AI) — เงียบแล้วถอด+ส่งเอง</span>');
+  if(recOn) parts.push('<span style="color:var(--red)">● กำลังฟัง ('+(sttEngine==="soniox"?"Soniox สด":"สด+AI")+') — เงียบแล้วถอด+ส่งเอง</span>');
   else if(micOn) parts.push('<span style="color:var(--red)">● กำลังฟัง</span>');
   else if(stopped) parts.push('<span style="color:var(--muted)">⏹ จบการฟังแล้ว — พิมพ์ต่อได้ หรือเริ่ม session ใหม่เพื่อฟังอีก</span>');
   if(screenOn) parts.push('<span style="color:var(--teal)">🖼 AI เห็นจอด้วยทุกครั้งที่ถาม</span>');
@@ -79,10 +114,10 @@ function setMicUI(){
   }
   $("micBtn").style.display=""; $("screenBtn").style.display="";
   const b=$("micBtn");
-  if(sttEngine==="gemini"){   // สด+AI auto-cut: idle / ฟังต่อเนื่อง (เงียบ→ถอด+ส่งเอง)
+  if(sttEngine==="gemini" || sttEngine==="soniox"){   // recOn-based toggle (gemini auto-cut / soniox realtime)
     b.className = "mic" + (recOn?" on":"");
     b.textContent = recOn ? "⏹ หยุด" : "🎤 เริ่มฟัง";
-    $("stopBtn").textContent="✂️ ส่งเลย";   // ตัด clip + ถอด + ส่งทันที (ไม่รอเงียบ) แล้วฟังต่อ
+    $("stopBtn").textContent="✂️ ส่งเลย";   // gemini=ตัด clip ถอด+ส่ง; soniox=ส่งข้อความที่ถอดได้ทันที — แล้วฟังต่อ
     $("stopBtn").style.display = recOn ? "" : "none";
     return;
   }
@@ -122,7 +157,9 @@ function captureFrame(){
 // ── Voice ──
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec=null, finalText="", silenceTimer=null, processing=false;
-if(!SR) $("supportWarn").style.display="flex";
+// Electron: Web Speech พัง (network) → gemini hybrid ใช้ energy VAD (Web Audio) แทนเป็นตัวตัดเงียบ
+const VAD_AUDIO = !!(window.electronAPI && window.electronAPI.isElectron);
+if(!SR && !VAD_AUDIO) $("supportWarn").style.display="flex";
 
 function buildRec(){
   const r=new SR(); r.continuous=true; r.interimResults=true; r.lang=lang;
@@ -161,7 +198,8 @@ function stopWebListen(){ micOn=false; clearTimeout(silenceTimer); try{rec&&rec.
 function lockComposer(lock){ $("composer").style.display = lock?"none":""; $("roNote").style.display = lock?"block":"none"; }
 // reset → กลับ idle (ปุ่ม+composer กลับมา) ใช้ตอนเริ่ม session ใหม่
 function resetListen(){
-  micOn=false; stopped=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{}
+  micOn=false; stopped=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} stopVad();
+  if(sttEngine==="soniox" && recOn){ stopSoniox(); }
   if(recOn){ recOn=false; hybridRec=false; try{mediaRec&&mediaRec.state!=="inactive"&&mediaRec.stop();}catch{} try{audioStream&&audioStream.getTracks().forEach(t=>t.stop());}catch{} hybridQ=[]; }
   finalText=""; clearVoicePreview(); lockComposer(false); setMicUI(); refreshStatus();
 }
@@ -174,10 +212,14 @@ function stopListen(){
   lockComposer(true); setMicUI(); refreshStatus();
 }
 $("micBtn").onclick=()=>{
+  if(sttEngine==="soniox") return toggleSonioxRecord();   // Soniox realtime ทีละคำ
   if(sttEngine==="gemini") return toggleGeminiRecord();   // สด+AI auto-cut
   micOn ? stopWebListen() : startWebListen();             // web: toggle เริ่ม/หยุด
 };
-$("stopBtn").onclick=()=>{ if(sttEngine==="gemini" && recOn) cutHybridClip(); else if(micOn) voiceSend(); };   // ✂️ ส่งเลย: gemini=ตัดคลิป; web=ส่ง finalText (ทั้งคู่ฟังต่อ)
+$("stopBtn").onclick=()=>{   // ✂️ ส่งเลย (ทุกโหมดฟังต่อหลังส่ง)
+  if(sttEngine==="soniox"){ if(recOn) sonioxFlush(); return; }
+  if(sttEngine==="gemini" && recOn) cutHybridClip(); else if(micOn) voiceSend();
+};
 
 // ── สด+AI (gemini mode): auto-cut ต่อเนื่อง — กดเริ่มครั้งเดียว พูดเรื่อยๆ, Web Speech เป็น VAD,
 //    เงียบ → ตัดคลิป → Gemini ถอด → ส่ง → ฟังต่อ (hands-free + แม่น). กดอีกครั้ง = หยุด
@@ -210,21 +252,24 @@ async function _hybridClipDone(){
   else clearVoicePreview();
 }
 async function toggleGeminiRecord(){
-  if(recOn){  // หยุด: ปิด Web Speech + ตัดคลิปสุดท้าย (recOn=false → ไม่อัดต่อ) + ปิด stream
+  if(recOn){  // หยุด: ปิด Web Speech/VAD + ตัดคลิปสุดท้าย (recOn=false → ไม่อัดต่อ) + ปิด stream
     recOn=false; hybridRec=false; clearTimeout(silenceTimer);
     try{ rec && rec.stop(); }catch{}
+    stopVad();
     try{ mediaRec && mediaRec.state!=="inactive" && mediaRec.stop(); }catch{}   // → _hybridClipDone ถอด+ส่งคลิปท้าย
     try{ audioStream && audioStream.getTracks().forEach(t=>t.stop()); }catch{}
     setMicUI(); refreshStatus(); return;
   }
   if(typeof MediaRecorder==="undefined"){ showError("เบราว์เซอร์นี้ไม่รองรับ MediaRecorder"); return; }
   if(!sttBackend().key){ showError("โหมด AI ต้องมี key — provider OpenRouter (credit) หรือ Gemini key"); return; }
-  try{ audioStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+  try{ audioStream=await navigator.mediaDevices.getUserMedia({audio: micDeviceId?{deviceId:{exact:micDeviceId}}:true}); }
   catch(e){ showError("ไมค์ถูกบล็อก — เปิดสิทธิ์ใน browser แล้วรีโหลด"); return; }
+  loadMics();   // ได้สิทธิ์แล้ว → เติมชื่อ device ใน dropdown
   showError(""); finalText=""; hybridText=""; hybridQ=[];
   recOn=true; hybridRec=true;
   startHybridClip();   // คลิปแรก
-  startRec();          // Web Speech (preview + VAD ตัดคลิป)
+  if(VAD_AUDIO) startVad(audioStream);   // Electron: energy VAD (Web Speech พัง)
+  else startRec();                       // browser: Web Speech (preview + VAD ตัดคลิป)
   updateVoicePreview("(กำลังฟัง…)"); setMicUI(); refreshStatus();
 }
 // VAD: Web Speech เงียบครบ silenceMs → ตัดคลิปปัจจุบัน (stop → _hybridClipDone → ถอด+ส่ง; startHybridClip คลิปใหม่)
@@ -232,6 +277,117 @@ function cutHybridClip(){
   if(!recOn) return;
   clearTimeout(silenceTimer);
   try{ if(mediaRec && mediaRec.state!=="inactive") mediaRec.stop(); }catch{}
+}
+
+// ── Energy VAD (Web Audio) — ใช้แทน Web Speech ตอน Electron: วัด RMS, เงียบครบ → cutHybridClip ──
+let vadCtx=null, vadSrc=null, vadAn=null, vadTimer=null, vadSpoke=false, vadSilentSince=0;
+function startVad(stream){
+  stopVad();
+  try{
+    vadCtx=new (window.AudioContext||window.webkitAudioContext)();
+    vadSrc=vadCtx.createMediaStreamSource(stream);
+    vadAn=vadCtx.createAnalyser(); vadAn.fftSize=512; vadSrc.connect(vadAn);
+    const data=new Uint8Array(vadAn.fftSize);
+    vadSpoke=false; vadSilentSince=0;
+    vadTimer=setInterval(()=>{                       // setInterval (ไม่ใช่ rAF) — ทำงานต่อแม้ window หลังฉาก
+      vadAn.getByteTimeDomainData(data);
+      let sum=0; for(let i=0;i<data.length;i++){ const d=(data[i]-128)/128; sum+=d*d; }
+      const rms=Math.sqrt(sum/data.length);
+      if(rms>0.02){ vadSpoke=true; vadSilentSince=0; updateVoicePreview("🗣 (กำลังพูด…)"); }
+      else if(vadSpoke){
+        if(!vadSilentSince) vadSilentSince=performance.now();
+        else if(performance.now()-vadSilentSince > Math.max(silenceMs,1500)){ vadSpoke=false; vadSilentSince=0; cutHybridClip(); }
+      }
+    },100);
+  }catch(e){}
+}
+function stopVad(){
+  if(vadTimer){ clearInterval(vadTimer); vadTimer=null; }
+  try{ vadSrc && vadSrc.disconnect(); }catch{}
+  try{ vadCtx && vadCtx.close(); }catch{}
+  vadCtx=vadSrc=vadAn=null; vadSpoke=false; vadSilentSince=0;
+}
+
+// ── Soniox realtime STT (สด ทีละคำ, ไทย+อังกฤษสลับได้) — stream PCM s16le ผ่าน WebSocket ──
+//   live: non-final tokens โชว์สดทันที, final tokens สะสม; endpoint = token {"text":"<end>"} → ส่ง utterance (hands-free)
+let sxWS=null, sxCtx=null, sxSrc=null, sxProc=null, sxGain=null, sxFinal="", sxReady=false;
+let sxPending="", sxSendTimer=null;   // debounce-merge: รวมท่อนที่ endpoint ตัดติดๆกัน (หยุดคิด) ส่งเป็นก้อนเดียวเมื่อเงียบจริง
+function sxMergeMs(){ return Math.max(silenceMs, 2500); }   // รอหลัง endpoint ก่อนส่ง — มีพูดต่อ=ยกเลิก รวมต่อ
+async function toggleSonioxRecord(){
+  if(recOn){ stopSoniox(); return; }
+  const key=getKey("soniox");
+  if(!key){ showError("ต้องใส่ Soniox API key ก่อน (เลือก Soniox สด แล้วใส่ key ที่หน้าหลัก)"); return; }
+  try{ audioStream=await navigator.mediaDevices.getUserMedia({audio: micDeviceId?{deviceId:{exact:micDeviceId}}:true}); }
+  catch(e){ showError("ไมค์ถูกบล็อก — เปิดสิทธิ์แล้วลองใหม่"); return; }
+  loadMics();
+  showError(""); sxFinal=""; sxPending=""; clearTimeout(sxSendTimer); sxSendTimer=null; sxReady=false; hybridQ=[]; finalText="";
+  recOn=true; hybridRec=false;
+  try{
+    sxCtx=new (window.AudioContext||window.webkitAudioContext)();
+    sxSrc=sxCtx.createMediaStreamSource(audioStream);
+    sxProc=sxCtx.createScriptProcessor(4096,1,1);
+    sxGain=sxCtx.createGain(); sxGain.gain.value=0;   // กัน feedback (ScriptProcessor ต้องต่ออยู่ใน graph ถึงจะยิง onaudioprocess)
+    sxWS=new WebSocket("wss://stt-rt.soniox.com/transcribe-websocket");
+    sxWS.binaryType="arraybuffer";
+    sxWS.onopen=()=>{
+      sxReady=true;
+      sxWS.send(JSON.stringify({
+        api_key:key, model:"stt-rt-v5",
+        audio_format:"pcm_s16le", sample_rate:Math.round(sxCtx.sampleRate), num_channels:1,
+        language_hints:["th","en"], enable_language_identification:true,
+        enable_endpoint_detection:true, max_endpoint_delay_ms:3000, endpoint_sensitivity:-0.3   // ตัดช้าลง กันหั่นกลางประโยคตอนหยุดคิด
+      }));
+    };
+    sxWS.onmessage=(ev)=>{
+      let res; try{ res=JSON.parse(ev.data); }catch{ return; }
+      if(res.error_code){ showError("Soniox: "+(res.error_message||res.error_type||res.error_code)); stopSoniox(); return; }
+      let partial="";
+      for(const tk of (res.tokens||[])){
+        if(tk.text==="<end>" || tk.text==="<fin>"){   // endpoint (เงียบ) → ย้าย final เข้า pending + ตั้ง timer ส่ง (debounce)
+          if(sxFinal.trim()){ sxPending=(sxPending?sxPending+" ":"")+sxFinal.trim(); sxFinal=""; }
+          clearTimeout(sxSendTimer); sxSendTimer=setTimeout(sxCommit, sxMergeMs());
+          continue;
+        }
+        clearTimeout(sxSendTimer); sxSendTimer=null;   // มี token จริง = ยังพูดอยู่ → ยกเลิกส่งที่ค้าง (รวมต่อ)
+        if(tk.is_final) sxFinal+=tk.text; else partial+=tk.text;
+      }
+      const prev=((sxPending?sxPending+" ":"")+sxFinal+partial).trim();
+      updateVoicePreview(prev?("🗣 "+prev):"(กำลังฟัง…)");
+    };
+    sxWS.onerror=()=>{ showError("เชื่อมต่อ Soniox ไม่สำเร็จ — เช็ค key/เน็ต"); };
+    sxProc.onaudioprocess=(e)=>{
+      if(!sxReady || !sxWS || sxWS.readyState!==1) return;
+      const f=e.inputBuffer.getChannelData(0);
+      const i16=new Int16Array(f.length);
+      for(let i=0;i<f.length;i++){ let s=Math.max(-1,Math.min(1,f[i])); i16[i]=s<0?s*0x8000:s*0x7FFF; }
+      sxWS.send(i16.buffer);
+    };
+    sxSrc.connect(sxProc); sxProc.connect(sxGain); sxGain.connect(sxCtx.destination);
+  }catch(e){ showError("เริ่ม Soniox ไม่สำเร็จ: "+esc(e.message)); stopSoniox(); return; }
+  updateVoicePreview("(กำลังฟัง…)"); setMicUI(); refreshStatus();
+}
+// commit: รวม pending + final ที่สะสม → ส่งเป็นก้อนเดียว (เรียกจาก debounce timer หลังเงียบจริง)
+function sxCommit(){
+  clearTimeout(sxSendTimer); sxSendTimer=null;
+  const txt=((sxPending?sxPending+" ":"")+sxFinal).trim();
+  sxPending=""; sxFinal="";
+  clearVoicePreview();
+  if(txt){ hybridQ.push(txt); _drainHybridQ(); }
+}
+// กด ✂️ ส่งเลย / หยุด → ส่งทุกอย่างที่ถอดได้ทันที (ไม่รอ debounce)
+function sonioxFlush(){ sxCommit(); }
+function stopSoniox(){
+  recOn=false;
+  sonioxFlush();   // ส่งเศษสุดท้าย
+  try{ if(sxProc) sxProc.onaudioprocess=null; sxProc&&sxProc.disconnect(); }catch{}
+  try{ sxGain&&sxGain.disconnect(); }catch{}
+  try{ sxSrc&&sxSrc.disconnect(); }catch{}
+  try{ sxCtx&&sxCtx.close(); }catch{}
+  try{ if(sxWS && sxWS.readyState===1) sxWS.send(""); }catch{}   // empty frame = จบ stream
+  const w=sxWS; if(w) setTimeout(()=>{ try{w.close();}catch{} }, 600);
+  sxWS=null; sxCtx=sxSrc=sxProc=sxGain=null; sxReady=false;
+  try{ audioStream&&audioStream.getTracks().forEach(t=>t.stop()); }catch{}
+  clearVoicePreview(); setMicUI(); refreshStatus();
 }
 
 async function voiceSend(){

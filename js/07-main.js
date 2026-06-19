@@ -132,11 +132,18 @@ homeListEl.addEventListener("click", sessClick);
 $("startBtn").onclick=()=>{ setMode(homeMode); newSession(); openOverlay(); };  // โหมดที่เลือกบนหน้าหลัก → ล็อกต่อ session + เปิดหน้าต่างลอย
 $("curHomeLink").onclick=()=>{ closeOverlay(); showView("home"); };
 
+// ── Settings panel expand/collapse (persist) ──
+(function(){
+  const sw=$("settingsWrap"); if(!sw) return;
+  if(store.get("ma_settings_open")==="0") sw.open=false;
+  sw.addEventListener("toggle",()=>store.set("ma_settings_open", sw.open?"1":"0"));
+})();
+
 // ── Font size ──
 let fontPx = +store.get("ma_fontsize")||14;
 function applyFont(px){ document.documentElement.style.setProperty("--fs", px+"px"); fontVal.textContent=px+"px"; }
 fontRange.value=fontPx; applyFont(fontPx);
-fontRange.oninput=()=>{ fontPx=+fontRange.value; applyFont(fontPx); store.set("ma_fontsize", fontPx); };
+fontRange.oninput=()=>{ fontPx=+fontRange.value; applyFont(fontPx); store.set("ma_fontsize", fontPx); if(typeof syncFloatControls==="function") syncFloatControls(); };  // ดันขนาดฟอนต์ไปหน้าต่างลอยด้วย
 
 // migrate session เก่าจาก localStorage (ma_sess_*) เข้า IndexedDB ครั้งเดียว (ตอน IDB ว่าง)
 function migrateFromLocalStorage(){
