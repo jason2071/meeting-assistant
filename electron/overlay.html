@@ -6,25 +6,41 @@
   <title>Meeting Overlay</title>
   <link rel="stylesheet" href="../styles.css" />
   <style>
-    /* overlay-specific: หน้าต่าง transparent — ความโปร่งคุมเฉพาะ "พื้นหลัง" ผ่าน --ov-a (rgba)
-       ตัวอักษร/ไอคอน/bubble = ทึบ ชัด 100% (ไม่โดนหรี่แบบ win.setOpacity) */
+    /* overlay-specific: หน้าต่าง transparent — พื้นขาว-ม่วงโปร่ง (--ov-a) + ตัวอักษรสีขาว
+       ความโปร่งคุมเฉพาะพื้นหลัง; ตัวอักษรขาวคมด้วย text-shadow เข้ม (อ่านได้ทั้งบนพื้น+desktop ทะลุ) */
     html, body { margin:0; height:100vh; background:transparent; }
-    body { display:flex; flex-direction:column; color:var(--text);
-      background:rgba(15,20,25,var(--ov-a,.85));
+    body { display:flex; flex-direction:column; color:#fff;
+      background:rgba(38,26,58,var(--ov-a,.7));
       font-family:Inter,system-ui,-apple-system,sans-serif; overflow:hidden; }
     .ov-head { -webkit-app-region: drag; display:flex; align-items:center; gap:8px; flex:none;
-      padding:7px 10px; background:rgba(26,34,44,var(--ov-a,.85)); border-bottom:1px solid var(--border); user-select:none; }
-    .ov-title { font-size:12px; font-weight:700; color:var(--teal); flex:1; white-space:nowrap; }
+      padding:7px 10px; background:rgba(52,36,80,var(--ov-a,.72)); border-bottom:1px solid rgba(255,255,255,.16); user-select:none; }
+    .ov-title { font-size:12px; font-weight:700; color:#fff; flex:1; white-space:nowrap; text-shadow:0 1px 3px rgba(0,0,0,.6); }
     .ov-head .no-drag, .ov-head input { -webkit-app-region: no-drag; }
-    .ov-op { width:70px; accent-color:var(--teal); }
+    .ov-op { width:70px; accent-color:#fff; }
     .ov-btn { width:26px; height:26px; padding:0; border:none; border-radius:6px; font-size:13px; cursor:pointer;
-      background:rgba(255,255,255,.10); color:var(--text); }
-    .ov-btn:hover { background:rgba(255,255,255,.20); }
-    .ov-btn.on { background:var(--teal); color:#06231f; }
+      background:rgba(255,255,255,.18); color:#fff; }
+    .ov-btn:hover { background:rgba(255,255,255,.32); }
+    .ov-btn.on { background:#fff; color:#3a2a5e; }
     #overlayResults { flex:1; overflow-y:auto; padding:10px; background:transparent; }
-    /* control bar: พื้นหลังโปร่งตาม --ov-a (override styles.css ที่เป็น panel2 ทึบ) */
-    .float-composer { background:rgba(26,34,44,var(--ov-a,.85)); }
-    /* bubble คำตอบ: ทึบเสมอ → อ่านชัด แม้พื้นหลังโปร่ง */
+    /* message ไม่มีกล่องพื้น — ตัวอักษรลอยบนพื้นม่วงดำโปร่ง; text-shadow เข้มให้อ่านชัด */
+    #overlayResults .msg { margin-bottom:14px; max-width:100%; }
+    #overlayResults .bubble { background:transparent !important; border:none !important; padding:2px 0; }
+    #overlayResults .msg.ai .bubble, #overlayResults .ans { color:#fff; }
+    #overlayResults .role, #overlayResults .ans, #overlayResults .bubble {
+      text-shadow:0 1px 3px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.7); }
+    /* role label เด่น: ใหญ่+หนา, AI=teal / ผู้ถาม=ขาว */
+    #overlayResults .role { font-size:12px; font-weight:800; letter-spacing:.3px; margin:0 0 5px; }
+    #overlayResults .msg.ai .role { color:var(--teal); }
+    #overlayResults .msg.user .role { color:#fff; }
+    /* แยก turn: เส้นคั่นบางๆ เหนือคำถามใหม่ (ยกเว้นอันแรก) */
+    #overlayResults .msg.user { border-top:1px solid rgba(255,255,255,.16); padding-top:12px; margin-top:8px; }
+    #overlayResults .msg.user:first-child { border-top:none; padding-top:0; margin-top:0; }
+    /* คำถาม (user): accent เส้น teal ซ้าย + ตัวอักษร teal อ่อน → เด่นจากคำตอบ */
+    #overlayResults .msg.user .bubble { border-left:3px solid var(--teal) !important; padding-left:10px; color:#86f1e2; font-weight:600; }
+    /* คง bg ของ code block (อ่านโค้ดชัด) */
+    #overlayResults pre, #overlayResults code, #overlayResults .codewrap { text-shadow:none; }
+    /* control bar: พื้นม่วงดำโปร่งตาม --ov-a */
+    .float-composer { background:rgba(52,36,80,var(--ov-a,.72)); }
   </style>
 </head>
 <body>
@@ -65,6 +81,7 @@
         if (st.display != null) el.style.display = st.display;
         el.classList.toggle("on", !!st.on);
       });
+      if (s.fs) document.documentElement.style.setProperty("--fs", s.fs);   // ขนาดฟอนต์ตาม slider หน้าหลัก
     });
 
     // ── control bar → ส่ง action กลับ main ──

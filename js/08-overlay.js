@@ -103,11 +103,13 @@ function syncFloatControls(){
       const src=$(id); if(!src) return;
       st[k]={label:src.textContent, display:src.style.display, on:src.classList.contains("on")};
     });
+    st.fs = document.documentElement.style.getPropertyValue("--fs") || "14px";   // ขนาดฟอนต์ → overlay
     electronAPI.pushOverlayControls(st);
     return;
   }
   if(!(pipWin && !pipWin.closed)) return;
   const s=pipWin.document.body;
+  pipWin.document.documentElement.style.setProperty("--fs", document.documentElement.style.getPropertyValue("--fs")||"14px");  // ฟอนต์ตาม slider
   [["fc-mic","micBtn"],["fc-stop","stopBtn"],["fc-screen","screenBtn"]].forEach(([fc,id])=>{
     const el=s.querySelector("."+fc), src=$(id); if(!el||!src) return;
     el.textContent=src.textContent;

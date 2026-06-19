@@ -143,7 +143,7 @@ $("curHomeLink").onclick=()=>{ closeOverlay(); showView("home"); };
 let fontPx = +store.get("ma_fontsize")||14;
 function applyFont(px){ document.documentElement.style.setProperty("--fs", px+"px"); fontVal.textContent=px+"px"; }
 fontRange.value=fontPx; applyFont(fontPx);
-fontRange.oninput=()=>{ fontPx=+fontRange.value; applyFont(fontPx); store.set("ma_fontsize", fontPx); };
+fontRange.oninput=()=>{ fontPx=+fontRange.value; applyFont(fontPx); store.set("ma_fontsize", fontPx); if(typeof syncFloatControls==="function") syncFloatControls(); };  // ดันขนาดฟอนต์ไปหน้าต่างลอยด้วย
 
 // migrate session เก่าจาก localStorage (ma_sess_*) เข้า IndexedDB ครั้งเดียว (ตอน IDB ว่าง)
 function migrateFromLocalStorage(){

@@ -311,6 +311,8 @@ function stopVad(){
 // ── Soniox realtime STT (สด ทีละคำ, ไทย+อังกฤษสลับได้) — stream PCM s16le ผ่าน WebSocket ──
 //   live: non-final tokens โชว์สดทันที, final tokens สะสม; endpoint = token {"text":"<end>"} → ส่ง utterance (hands-free)
 let sxWS=null, sxCtx=null, sxSrc=null, sxProc=null, sxGain=null, sxFinal="", sxReady=false;
+let sxPending="", sxSendTimer=null;   // debounce-merge: รวมท่อนที่ endpoint ตัดติดๆกัน (หยุดคิด) ส่งเป็นก้อนเดียวเมื่อเงียบจริง
+function sxMergeMs(){ return Math.max(silenceMs, 2500); }   // รอหลัง endpoint ก่อนส่ง — มีพูดต่อ=ยกเลิก รวมต่อ
 async function toggleSonioxRecord(){
   if(recOn){ stopSoniox(); return; }
   const key=getKey("soniox");
@@ -318,7 +320,7 @@ async function toggleSonioxRecord(){
   try{ audioStream=await navigator.mediaDevices.getUserMedia({audio: micDeviceId?{deviceId:{exact:micDeviceId}}:true}); }
   catch(e){ showError("ไมค์ถูกบล็อก — เปิดสิทธิ์แล้วลองใหม่"); return; }
   loadMics();
-  showError(""); sxFinal=""; sxReady=false; hybridQ=[]; finalText="";
+  showError(""); sxFinal=""; sxPending=""; clearTimeout(sxSendTimer); sxSendTimer=null; sxReady=false; hybridQ=[]; finalText="";
   recOn=true; hybridRec=false;
   try{
     sxCtx=new (window.AudioContext||window.webkitAudioContext)();
@@ -332,7 +334,8 @@ async function toggleSonioxRecord(){
       sxWS.send(JSON.stringify({
         api_key:key, model:"stt-rt-v5",
         audio_format:"pcm_s16le", sample_rate:Math.round(sxCtx.sampleRate), num_channels:1,
-        language_hints:["th","en"], enable_language_identification:true, enable_endpoint_detection:true
+        language_hints:["th","en"], enable_language_identification:true,
+        enable_endpoint_detection:true, max_endpoint_delay_ms:3000, endpoint_sensitivity:-0.3   // ตัดช้าลง กันหั่นกลางประโยคตอนหยุดคิด
       }));
     };
     sxWS.onmessage=(ev)=>{
@@ -340,10 +343,15 @@ async function toggleSonioxRecord(){
       if(res.error_code){ showError("Soniox: "+(res.error_message||res.error_type||res.error_code)); stopSoniox(); return; }
       let partial="";
       for(const tk of (res.tokens||[])){
-        if(tk.text==="<end>" || tk.text==="<fin>"){ sonioxFlush(); continue; }   // endpoint → ส่ง utterance
+        if(tk.text==="<end>" || tk.text==="<fin>"){   // endpoint (เงียบ) → ย้าย final เข้า pending + ตั้ง timer ส่ง (debounce)
+          if(sxFinal.trim()){ sxPending=(sxPending?sxPending+" ":"")+sxFinal.trim(); sxFinal=""; }
+          clearTimeout(sxSendTimer); sxSendTimer=setTimeout(sxCommit, sxMergeMs());
+          continue;
+        }
+        clearTimeout(sxSendTimer); sxSendTimer=null;   // มี token จริง = ยังพูดอยู่ → ยกเลิกส่งที่ค้าง (รวมต่อ)
         if(tk.is_final) sxFinal+=tk.text; else partial+=tk.text;
       }
-      const prev=(sxFinal+partial).trim();
+      const prev=((sxPending?sxPending+" ":"")+sxFinal+partial).trim();
       updateVoicePreview(prev?("🗣 "+prev):"(กำลังฟัง…)");
     };
     sxWS.onerror=()=>{ showError("เชื่อมต่อ Soniox ไม่สำเร็จ — เช็ค key/เน็ต"); };
@@ -358,12 +366,16 @@ async function toggleSonioxRecord(){
   }catch(e){ showError("เริ่ม Soniox ไม่สำเร็จ: "+esc(e.message)); stopSoniox(); return; }
   updateVoicePreview("(กำลังฟัง…)"); setMicUI(); refreshStatus();
 }
-// ส่งข้อความที่ถอดได้ตอนนี้ (endpoint <end> หรือกด ✂️ ส่งเลย) ผ่านคิว — แล้วฟังต่อ
-function sonioxFlush(){
-  const utt=sxFinal.trim(); sxFinal="";
+// commit: รวม pending + final ที่สะสม → ส่งเป็นก้อนเดียว (เรียกจาก debounce timer หลังเงียบจริง)
+function sxCommit(){
+  clearTimeout(sxSendTimer); sxSendTimer=null;
+  const txt=((sxPending?sxPending+" ":"")+sxFinal).trim();
+  sxPending=""; sxFinal="";
   clearVoicePreview();
-  if(utt){ hybridQ.push(utt); _drainHybridQ(); }
+  if(txt){ hybridQ.push(txt); _drainHybridQ(); }
 }
+// กด ✂️ ส่งเลย / หยุด → ส่งทุกอย่างที่ถอดได้ทันที (ไม่รอ debounce)
+function sonioxFlush(){ sxCommit(); }
 function stopSoniox(){
   recOn=false;
   sonioxFlush();   // ส่งเศษสุดท้าย
