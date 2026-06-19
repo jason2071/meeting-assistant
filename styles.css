@@ -124,6 +124,18 @@
   .mode-card .mc-d { font-size:11px; color:var(--muted); }
   .mode-badge { font-size:11px; font-weight:700; color:var(--teal); background:rgba(45,212,191,.1);
     border:1px solid var(--border); border-radius:6px; padding:3px 8px; white-space:nowrap; }
+  /* ── การ์ด pre-start (เลือกโหมด + stack + ตัวเลือก + ปุ่มเริ่ม) ── */
+  .start-card { background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:16px; margin-bottom:18px; display:flex; flex-direction:column; gap:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,.28); position:relative; overflow:hidden; }
+  .start-card::before { content:""; position:absolute; left:0; top:0; right:0; height:3px;
+    background:linear-gradient(90deg,var(--teal),#6ee7d8 60%,transparent); }
+  .start-card-h { font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--teal); text-transform:uppercase; }
+  .sc-field { display:flex; flex-direction:column; gap:6px; }
+  .sc-row2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+  @media (max-width:560px){ .sc-row2 { grid-template-columns:1fr; } }
+  .sc-inline { display:flex; align-items:center; gap:8px; }
+  .start-card .newbtn { margin-top:2px; }
   /* sys-audio setup helper (BlackHole) */
   .sysaudio { background:var(--panel); border:1px solid var(--border); border-radius:12px; margin-bottom:14px; }
   .sysaudio > summary { cursor:pointer; list-style:none; padding:12px 14px; font-size:13px; font-weight:600;

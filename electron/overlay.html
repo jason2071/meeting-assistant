@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meeting Overlay</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* overlay-specific: หน้าต่าง transparent — ความโปร่งคุมเฉพาะ "พื้นหลัง" ผ่าน --ov-a (rgba)
+       ตัวอักษร/ไอคอน/bubble = ทึบ ชัด 100% (ไม่โดนหรี่แบบ win.setOpacity) */
+    html, body { margin:0; height:100vh; background:transparent; }
+    body { display:flex; flex-direction:column; color:var(--text);
+      background:rgba(15,20,25,var(--ov-a,.85));
+      font-family:Inter,system-ui,-apple-system,sans-serif; overflow:hidden; }
+    .ov-head { -webkit-app-region: drag; display:flex; align-items:center; gap:8px; flex:none;
+      padding:7px 10px; background:rgba(26,34,44,var(--ov-a,.85)); border-bottom:1px solid var(--border); user-select:none; }
+    .ov-title { font-size:12px; font-weight:700; color:var(--teal); flex:1; white-space:nowrap; }
+    .ov-head .no-drag, .ov-head input { -webkit-app-region: no-drag; }
+    .ov-op { width:70px; accent-color:var(--teal); }
+    .ov-btn { width:26px; height:26px; padding:0; border:none; border-radius:6px; font-size:13px; cursor:pointer;
+      background:rgba(255,255,255,.10); color:var(--text); }
+    .ov-btn:hover { background:rgba(255,255,255,.20); }
+    .ov-btn.on { background:var(--teal); color:#06231f; }
+    #overlayResults { flex:1; overflow-y:auto; padding:10px; background:transparent; }
+    /* control bar: พื้นหลังโปร่งตาม --ov-a (override styles.css ที่เป็น panel2 ทึบ) */
+    .float-composer { background:rgba(26,34,44,var(--ov-a,.85)); }
+    /* bubble คำตอบ: ทึบเสมอ → อ่านชัด แม้พื้นหลังโปร่ง */
+  </style>
+</head>
+<body>
+  <div class="ov-head">
+    <span class="ov-title">🎤 Meeting</span>
+    <input type="range" id="ovOpacity" class="ov-op no-drag" min="0" max="100" value="85" title="ความโปร่งของพื้นหลัง (font/bubble ชัดเสมอ)" />
+    <button id="ovTop" class="ov-btn no-drag on" title="ลอยเหนือเสมอ (always-on-top)">📌</button>
+    <button id="ovShield" class="ov-btn no-drag" title="ซ่อนจากการแชร์จอ/บันทึกหน้าจอ">🛡</button>
+    <button id="ovClose" class="ov-btn no-drag" title="ปิด">✕</button>
+  </div>
+  <div id="overlayResults" class="chat-msgs pip-msgs"></div>
+  <div class="float-composer">
+    <button class="fc-mic mic">🎤 เริ่มฟัง</button>
+    <button class="fc-stop pill stopbtn" style="display:none">✂️ ส่งเลย</button>
+    <button class="fc-screen pill">🖥 แชร์จอ</button>
+    <div class="fc-inputrow">
+      <input class="fc-input" placeholder="พิมพ์คำถาม…" />
+      <button class="fc-send send">➤</button>
+    </div>
+  </div>
+
+  <script>
+    const api = window.electronAPI;
+    const $ = (id) => document.getElementById(id);
+    const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch { return d; } };
+    const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+    // ── mirror คำตอบจาก main ──
+    const results = $("overlayResults");
+    api.onOverlayHTML((html) => { results.innerHTML = html; results.scrollTop = results.scrollHeight; });
+
+    // ── sync ปุ่ม control (label/display/on) จาก main ──
+    api.onOverlayControls((s) => {
+      [["fc-mic", s.mic], ["fc-stop", s.stop], ["fc-screen", s.screen]].forEach(([cls, st]) => {
+        if (!st) return;
+        const el = document.querySelector("." + cls); if (!el) return;
+        if (st.label != null) el.textContent = st.label;
+        if (st.display != null) el.style.display = st.display;
+        el.classList.toggle("on", !!st.on);
+      });
+    });
+
+    // ── control bar → ส่ง action กลับ main ──
+    document.querySelector(".fc-mic").onclick = () => api.sendAction("mic");
+    document.querySelector(".fc-stop").onclick = () => api.sendAction("stop");
+    document.querySelector(".fc-screen").onclick = () => api.sendAction("screen");
+    const input = document.querySelector(".fc-input");
+    const doSend = () => { const v = (input.value || "").trim(); if (!v) return; input.value = ""; api.sendAction("send", v); };
+    document.querySelector(".fc-send").onclick = doSend;
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); } });
+
+    // ── ความโปร่งของพื้นหลัง (CSS rgba alpha เท่านั้น — font/bubble ชัด 100%, ไม่หรี่ทั้งบาน) ──
+    const setBgA = (v) => document.documentElement.style.setProperty("--ov-a", (v / 100).toFixed(2));
+    const op0 = +lsGet("ov_op", "85");
+    $("ovOpacity").value = op0; setBgA(op0);
+    $("ovOpacity").oninput = () => { const v = +$("ovOpacity").value; setBgA(v); lsSet("ov_op", v); };
+
+    // ── always-on-top toggle (default on) ──
+    let aot = lsGet("ov_top", "1") === "1";
+    $("ovTop").classList.toggle("on", aot); api.setAlwaysOnTop(aot);
+    $("ovTop").onclick = () => { aot = !aot; $("ovTop").classList.toggle("on", aot); api.setAlwaysOnTop(aot); lsSet("ov_top", aot ? "1" : "0"); };
+
+    // ── content protection (ซ่อนจากแชร์จอ) toggle (default off) ──
+    let cp = lsGet("ov_cp", "0") === "1";
+    $("ovShield").classList.toggle("on", cp); api.setContentProtection(cp);
+    $("ovShield").onclick = () => { cp = !cp; $("ovShield").classList.toggle("on", cp); api.setContentProtection(cp); lsSet("ov_cp", cp ? "1" : "0"); };
+
+    // ── close ──
+    $("ovClose").onclick = () => api.close();
+
+    // ── แจ้ง main ว่า overlay พร้อมแล้ว → main จะ push html + control state เริ่มต้นกลับมา ──
+    api.sendAction("ready");
+  </script>
+</body>
+</html>

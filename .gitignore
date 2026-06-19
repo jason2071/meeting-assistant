@@ -26,3 +26,7 @@ secrets.*
 
 # ui
 ui-fix/
+
+# Electron / Node (desktop app)
+node_modules/
+dist/

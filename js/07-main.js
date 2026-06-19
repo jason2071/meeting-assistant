@@ -132,6 +132,13 @@ homeListEl.addEventListener("click", sessClick);
 $("startBtn").onclick=()=>{ setMode(homeMode); newSession(); openOverlay(); };  // โหมดที่เลือกบนหน้าหลัก → ล็อกต่อ session + เปิดหน้าต่างลอย
 $("curHomeLink").onclick=()=>{ closeOverlay(); showView("home"); };
 
+// ── Settings panel expand/collapse (persist) ──
+(function(){
+  const sw=$("settingsWrap"); if(!sw) return;
+  if(store.get("ma_settings_open")==="0") sw.open=false;
+  sw.addEventListener("toggle",()=>store.set("ma_settings_open", sw.open?"1":"0"));
+})();
+
 // ── Font size ──
 let fontPx = +store.get("ma_fontsize")||14;
 function applyFont(px){ document.documentElement.style.setProperty("--fs", px+"px"); fontVal.textContent=px+"px"; }
