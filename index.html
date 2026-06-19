@@ -75,6 +75,14 @@
             <select id="micSel" style="flex:1;min-width:160px" title="เลือกไมค์/อุปกรณ์เข้า (มีผลกับ สด+AI; โหมด สด ใช้ default ของระบบ)"><option value="">ค่าเริ่มต้นของระบบ</option></select>
             <button id="micRefresh" type="button" class="minibtn" title="โหลดรายชื่อไมค์ (ขออนุญาตเพื่อเห็นชื่อ)" style="width:28px;height:28px;padding:0;font-size:13px">↻</button>
           </div>
+          <div class="row" id="audioSrcRow" style="gap:8px;flex-wrap:wrap;align-items:center;display:none">
+            <div class="lbl" style="letter-spacing:0;text-transform:none;font-weight:600">🔊 แหล่งเสียง</div>
+            <div class="seg" id="audioSrcSeg">
+              <button id="asrcMic" class="on" title="ไมโครโฟน">🎤 ไมค์</button>
+              <button id="asrcSys" title="เสียงระบบ (loopback) — ฟังเสียงที่ออกลำโพง/ประชุม โดยไม่ต้อง VB-CABLE; ใช้กับ Soniox สด บน Windows desktop">🔊 เสียงระบบ</button>
+            </div>
+            <span class="mono" style="font-size:11px;color:var(--muted)">เสียงระบบ = loopback ที่ออกลำโพง (Windows desktop · ใช้กับ Soniox สด)</span>
+          </div>
           <div id="geminiKeyRow" style="display:none">
             <div class="lbl" style="margin-bottom:6px">Gemini API key <span style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)">· สำหรับ สด+AI (provider นี้ถอดเสียงเองไม่ได้ — OpenRouter ถอดผ่าน credit ได้เลย)</span></div>
             <input id="geminiKey" type="password" autocomplete="off" style="width:100%" placeholder="วาง Gemini API key — เก็บใน sessionStorage เท่านั้น (ปิดแท็บแล้วหาย)" />

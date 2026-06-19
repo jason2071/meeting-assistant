@@ -82,6 +82,11 @@ const fromOverlay = (e) => overlayWin && !overlayWin.isDestroyed() && BrowserWin
 ipcMain.on("set-always-on-top", (e, b) => { if (fromOverlay(e)) overlayWin.setAlwaysOnTop(!!b, "screen-saver"); });
 ipcMain.on("set-content-protection", (e, b) => { if (fromOverlay(e)) overlayWin.setContentProtection(!!b); });
 
+// loopback (ฟังเสียงระบบ): one-shot flag — renderer ส่ง "prep-loopback" ก่อน getDisplayMedia
+// → handler grant จอหลัก+audio:'loopback' แทนเปิด picker (renderer ทิ้ง video เก็บแต่เสียง)
+let loopbackOnce = false;
+ipcMain.on("prep-loopback", () => { loopbackOnce = true; });
+
 // ── source picker (Windows/macOS เก่า ที่ไม่มี system picker) ──
 // getSources(+thumbnail) → เปิด picker window ให้ผู้ใช้เลือก → callback({video: source}) | callback() (deny)
 let pickerWin = null;
@@ -142,6 +147,13 @@ if (!app.requestSingleInstanceLock()) {
     //   (กัน auto-grant จอหลักทั้งจอ — รองรับหลายจอ + เลือกหน้าต่างเดียวให้ overlay ไม่ติด)
     try {
       session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+        if (loopbackOnce) {   // renderer ขอ loopback (ฟังเสียงระบบ) → auto-grant จอหลัก + audio:'loopback' ไม่เปิด picker
+          loopbackOnce = false;
+          desktopCapturer.getSources({ types: ["screen"] })
+            .then((s) => callback(s && s.length ? { video: s[0], audio: "loopback" } : undefined))
+            .catch(() => callback());
+          return;
+        }
         pickSource(callback);
       }, { useSystemPicker: true });
     } catch (e) { /* Electron เก่าไม่มี API นี้ */ }

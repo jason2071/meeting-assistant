@@ -41,6 +41,29 @@ let sttEngine = store.get("ma_stt")||"web";
 let recOn=false, mediaRec=null, audioChunks=[], audioStream=null;  // gemini push-to-record state
 // ── เลือกไมโครโฟน (input device) — มีผลกับ สด+AI (getUserMedia); Web Speech ใช้ default ของระบบ ──
 let micDeviceId = store.get("ma_mic")||"";
+// ── แหล่งเสียง STT: mic (getUserMedia) | system (Electron loopback ผ่าน getDisplayMedia audio:'loopback') ──
+// system = ฟังเสียงที่ออกลำโพง/ประชุม โดยไม่ต้อง virtual cable; ใช้กับ Soniox (Windows desktop)
+let audioSrc = store.get("ma_audiosrc")||"mic";
+function applyAudioSrcUI(){
+  if($("asrcMic")) $("asrcMic").classList.toggle("on",audioSrc==="mic");
+  if($("asrcSys")) $("asrcSys").classList.toggle("on",audioSrc==="system");
+}
+function setAudioSrc(s){ if(recOn||micOn) return; audioSrc=s; store.set("ma_audiosrc",s); applyAudioSrcUI(); }
+if($("asrcMic")) $("asrcMic").onclick=()=>setAudioSrc("mic");
+if($("asrcSys")) $("asrcSys").onclick=()=>setAudioSrc("system");
+applyAudioSrcUI();
+// คืน MediaStream เสียงสำหรับ STT — system → Electron loopback (ไม่ใช้ video), ไม่งั้น mic
+async function getSttStream(){
+  if(audioSrc==="system" && window.electronAPI && window.electronAPI.isElectron){
+    window.electronAPI.prepLoopback();   // บอก main: request ถัดไป = loopback (auto-grant จอหลัก+เสียงระบบ ไม่เปิด picker)
+    const s = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:true });
+    s.getVideoTracks().forEach(t=>t.stop());   // เอาเฉพาะเสียง
+    const at = s.getAudioTracks();
+    if(!at.length) throw new Error("ไม่มีเสียงระบบ (loopback) — รองรับเฉพาะ Windows desktop");
+    return new MediaStream(at);
+  }
+  return await navigator.mediaDevices.getUserMedia({audio: micDeviceId?{deviceId:{exact:micDeviceId}}:true});
+}
 async function loadMics(){
   const sel=$("micSel"); if(!sel||!navigator.mediaDevices) return;
   try{
@@ -91,6 +114,7 @@ if(window.electronAPI && window.electronAPI.isElectron){
   if(sttEngine==="web"){ sttEngine="gemini"; store.set("ma_stt","gemini"); applySttUI(); }
   $("sttWeb").style.display="none";
   const hint=$("sttHint"); if(hint) hint.textContent="desktop: 'Soniox สด' (ทีละคำ realtime) หรือ 'สด+AI' (ถอดแม่นตอนจบ) — Web Speech ใช้ใน Electron ไม่ได้";
+  const ar=$("audioSrcRow"); if(ar) ar.style.display="";   // loopback เสียงระบบ มีเฉพาะ desktop
 }
 
 // ── status ── (showError ย้ายไป js/02 เพราะ fetchModels ใน js/03 เรียกตอน load ก่อน js/04)
@@ -317,8 +341,8 @@ async function toggleSonioxRecord(){
   if(recOn){ stopSoniox(); return; }
   const key=getKey("soniox");
   if(!key){ showError("ต้องใส่ Soniox API key ก่อน (เลือก Soniox สด แล้วใส่ key ที่หน้าหลัก)"); return; }
-  try{ audioStream=await navigator.mediaDevices.getUserMedia({audio: micDeviceId?{deviceId:{exact:micDeviceId}}:true}); }
-  catch(e){ showError("ไมค์ถูกบล็อก — เปิดสิทธิ์แล้วลองใหม่"); return; }
+  try{ audioStream=await getSttStream(); }   // mic หรือ เสียงระบบ (loopback) ตาม audioSrc
+  catch(e){ showError(audioSrc==="system" ? (e.message||"เปิดเสียงระบบไม่สำเร็จ") : "ไมค์ถูกบล็อก — เปิดสิทธิ์แล้วลองใหม่"); return; }
   loadMics();
   showError(""); sxFinal=""; sxPending=""; clearTimeout(sxSendTimer); sxSendTimer=null; sxReady=false; hybridQ=[]; finalText="";
   recOn=true; hybridRec=false;
