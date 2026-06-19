@@ -5,20 +5,30 @@
 let floatObserver=null, floatTarget=null, pipWin=null;
 
 // ── mirror logic (#results → หน้าต่าง PiP) ──
+let _syncRaf=0;
 function syncOverlay(){
   if(!floatTarget) return;
+  // auto-scroll เฉพาะตอน user อยู่ใกล้ล่างสุด — ไม่สู้ตอน user เลื่อนขึ้นอ่าน (#5)
+  const atBottom = floatTarget.scrollHeight - floatTarget.scrollTop - floatTarget.clientHeight < 40;
   floatTarget.innerHTML = results.innerHTML;
-  floatTarget.scrollTop = floatTarget.scrollHeight;
+  if(atBottom) floatTarget.scrollTop = floatTarget.scrollHeight;
+}
+// debounce ผ่าน rAF — รวม burst mutations ตอน stream token ทีละ chunk เป็น 1 serialize/frame (#5)
+function scheduleSync(){
+  if(_syncRaf) return;
+  const raf = (pipWin && pipWin.requestAnimationFrame) || requestAnimationFrame;
+  _syncRaf = raf(()=>{ _syncRaf=0; syncOverlay(); });
 }
 function startMirror(targetEl){
   floatTarget = targetEl;
   syncOverlay();
   if(floatObserver) floatObserver.disconnect();
-  floatObserver = new MutationObserver(syncOverlay);
+  floatObserver = new MutationObserver(scheduleSync);
   floatObserver.observe(results, {childList:true, subtree:true, characterData:true});
 }
 function stopMirror(){
   if(floatObserver){ floatObserver.disconnect(); floatObserver=null; }
+  _syncRaf=0;
   floatTarget=null;
 }
 
@@ -35,12 +45,13 @@ function copyStylesTo(win){
   });
 }
 async function openPip(){
+  if(isOverlayOpen()){ syncOverlay(); pipWin.focus?.(); return; }   // เปิดอยู่แล้ว → โฟกัส ไม่เปิดซ้ำ (#1)
   if(!("documentPictureInPicture" in window)){
     showError("เบราว์เซอร์นี้ไม่รองรับหน้าต่างลอย (Document PiP) — ใช้ Chrome/Edge 116+");
     updateFloatBtn(); return;
   }
   try{ pipWin = await documentPictureInPicture.requestWindow({width:360, height:480}); }
-  catch(e){ return; }   // ผู้ใช้ยกเลิก/ไม่มี gesture
+  catch(e){ updateFloatBtn(); return; }   // ผู้ใช้ยกเลิก/ไม่มี gesture
   copyStylesTo(pipWin);
   const d=pipWin.document;
   d.body.className="pip-body";
@@ -51,11 +62,15 @@ async function openPip(){
   d.body.appendChild(head); d.body.appendChild(wrap); d.body.appendChild(comp);
   startMirror(wrap);
   wireFloatControls(comp); syncFloatControls();
-  pipWin.addEventListener("pagehide", ()=>{ stopMirror(); pipWin=null; updateFloatBtn(); });
+  startCtrlObserver();   // observe ปุ่มหลักเฉพาะตอน overlay เปิด (#2)
+  pipWin.addEventListener("pagehide", ()=>{
+    if(pipWin && !pipWin.closed) return;   // bfcache/navigate โดย window ยังลอยอยู่ → อย่าทิ้ง (#3)
+    stopMirror(); stopCtrlObserver(); pipWin=null; updateFloatBtn();
+  });
   updateFloatBtn();
 }
 function closePip(){
-  stopMirror();
+  stopMirror(); stopCtrlObserver();
   if(pipWin){ try{ pipWin.close(); }catch{} pipWin=null; }
   updateFloatBtn();
 }
@@ -76,7 +91,8 @@ function wireFloatControls(scope){
   if(mic) mic.onclick=()=>$("micBtn").click();
   if(stop) stop.onclick=()=>$("stopBtn").click();
   if(screen) screen.onclick=()=>$("screenBtn").click();
-  const doSend=()=>{ const v=(input&&input.value||"").trim(); if(!v) return; input.value=""; submit(v); };
+  // เช็ค busy ก่อนเคลียร์ — กันข้อความหายเงียบตอน answer กำลัง stream (#7)
+  const doSend=()=>{ const v=(input&&input.value||"").trim(); if(!v||busy) return; input.value=""; submit(v); };
   if(send) send.onclick=doSend;
   if(input) input.addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); doSend(); } });
 }
@@ -92,5 +108,11 @@ function syncFloatControls(){
   });
 }
 // ปุ่มหลักเปลี่ยน (label/class/ซ่อน) → sync แผงตาม (decoupled เหมือน mirror)
-const ctrlObserver=new MutationObserver(()=>syncFloatControls());
-["micBtn","stopBtn","screenBtn"].forEach(id=>ctrlObserver.observe($(id),{attributes:true,childList:true,characterData:true,subtree:true}));
+// connect เฉพาะตอน overlay เปิด, disconnect ตอนปิด — ไม่ให้ fire ทั้ง page lifetime (#2)
+let ctrlObserver=null;
+function startCtrlObserver(){
+  if(ctrlObserver) ctrlObserver.disconnect();
+  ctrlObserver=new MutationObserver(()=>syncFloatControls());
+  ["micBtn","stopBtn","screenBtn"].forEach(id=>ctrlObserver.observe($(id),{attributes:true,childList:true,characterData:true,subtree:true}));
+}
+function stopCtrlObserver(){ if(ctrlObserver){ ctrlObserver.disconnect(); ctrlObserver=null; } }
