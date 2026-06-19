@@ -10,8 +10,9 @@
 // key ของ object ต้องตรงกับ provider id: openrouter | gemini | openai | claude
 
 window.__MA_KEYS__ = {
-  openrouter: "",
-  gemini: "",
-  openai: "",
-  claude: "",
+  openrouter: '',
+  gemini: '',
+  openai: '',
+  claude: '',
+  soniox: '',
 };
