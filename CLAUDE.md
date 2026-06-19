@@ -14,7 +14,8 @@ A zero-build browser app — a real-time meeting assistant for a Thai dev team. 
 - `js/04-voice.js` — mode/`setMode`, toggles, `refreshStatus`, screen share, voice listen toggle (`startWebListen`/`stopWebListen`/`voiceSend`; `stopListen` = dead/compat)
 - `js/05-llm.js` — `buildRequest`, `streamLLM`
 - `js/06-render.js` — `el`/`esc`/`highlightCode`/`inline`/`mdToHtml`/`renderEstimate`, chat bubbles, voice preview, `correctText`, `looseJSON`
-- `js/07-main.js` — `submit`, sessions/routing, font, init IIFE (**loads last**)
+- `js/07-main.js` — `submit`, sessions/routing, font, init IIFE
+- `js/08-overlay.js` — หน้าต่างลอย (floating overlay) 2 โหมด: `inpage` (div โปร่งมองทะลุ ในแท็บ) / `pip` (Document PiP ลอยเหนือแอปอื่น/ซ่อนตอนแชร์เฉพาะหน้าต่าง ไม่ใช่ทั้งจอ). เลือกผ่าน `floatMode` (persisted `ma_float_mode`, default `inpage`); mirror `#results` เข้าเป้าหมายที่ active ด้วย `MutationObserver` ตัวเดียว (`startMirror`/`syncOverlay`/`stopMirror`); เปิดตอนกด `startBtn` (`openOverlay`), ปิดตอนกลับ home (`closeOverlay`). in-page ลากย้าย+สไลเดอร์ความโปร่ง (`ma_float_pos`/`ma_float_op`); PiP คัด stylesheet ผ่าน `copyStylesTo`. ปุ่ม ⇄ / segmented `#floatSeg` สลับโหมดสด. **(loads last)**
 
 No package.json, no framework, no dependencies. Serve over `http://` (Chrome/Edge — required for `SpeechRecognition`; media APIs are blocked on `file://`); LLM calls go directly from the browser to the provider. Optional `config.local.js` (loaded before `js/*`) sets `window.__MA_KEYS__` for local key auto-fill.
 

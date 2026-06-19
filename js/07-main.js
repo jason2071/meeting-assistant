@@ -129,8 +129,8 @@ function sessClick(e){
   if(it) openSession(it.getAttribute("data-id"));
 }
 homeListEl.addEventListener("click", sessClick);
-$("startBtn").onclick=()=>{ setMode(homeMode); newSession(); };  // โหมดที่เลือกบนหน้าหลัก → ล็อกต่อ session
-$("curHomeLink").onclick=()=>showView("home");
+$("startBtn").onclick=()=>{ setMode(homeMode); newSession(); openOverlay(); };  // โหมดที่เลือกบนหน้าหลัก → ล็อกต่อ session + เปิดหน้าต่างลอย
+$("curHomeLink").onclick=()=>{ closeOverlay(); showView("home"); };
 
 // ── Font size ──
 let fontPx = +store.get("ma_fontsize")||14;

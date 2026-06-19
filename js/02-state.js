@@ -61,6 +61,7 @@ let busy = false;
 let silenceMs = +store.get("ma_silence") || 1800;  // auto-send delay after silence (ปรับได้, default ถามสด)
 let correctVoice = store.get("ma_correct")==="1";  // qa/est: แก้คำถอดเสียงด้วย LLM ก่อนส่ง (default ปิด)
 let thinkOn = store.get("ma_think")==="1";  // ให้ model คิดก่อนตอบ (thinking/reasoning) — default ปิด (เร็ว+ไม่กิน token)
+let floatMode = store.get("ma_float_mode") || "inpage";  // หน้าต่างลอย: inpage (โปร่ง มองทะลุ) | pip (Document PiP ลอยเหนือ/ซ่อนตอนแชร์หน้าต่าง)
 
 // ── DOM ──
 const $ = (id)=>document.getElementById(id);
