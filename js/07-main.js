@@ -14,12 +14,16 @@ async function submit(override){
   if(!key){ showError("ยังไม่ได้ใส่ API key — กลับไปตั้งค่าที่หน้าหลัก"); return; }
   busy=true; showError(""); $("input").value=""; finalText=""; clearVoicePreview(); $("sendBtn").classList.remove("ready");
   const image = screenOn ? captureFrame() : null;
+  // multi-turn: ประวัติ Q&A ก่อนหน้า (items มีแค่ turn เก่า — saveItem รันหลังตอบ); cap + gate ด้วย contextOn
+  const MAX_TURNS=10;
+  const history=(contextOn ? ((curSess&&curSess.items)||[]).slice(-MAX_TURNS) : [])
+    .flatMap(it=>[{role:"user",text:it.q},{role:"assistant",text:it.raw}]);
   addUserMsg(q, !!image);
 
   if(mode==="qa"){
     const aiBubble=addAiMsg(); const ans=el("div","ans","▍"); aiBubble.appendChild(ans);
     try{
-      const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:4096,think:thinkOn});  // maxTokens สูงกัน thinking กิน budget; ความสั้นคุมด้วย prompt
+      const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:4096,think:thinkOn,history});  // maxTokens สูงกัน thinking กิน budget; ความสั้นคุมด้วย prompt
       const full=await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); scrollBottom(); });
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
       if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}); }
@@ -28,7 +32,7 @@ async function submit(override){
     const bubble=addAiMsg();
     const load=el("div","mono","กำลังประเมิน…"); load.style.color="var(--muted)"; bubble.appendChild(load);
     try{
-      const req=buildRequest(provider,key,model,{system:EST_SYSTEM+stackLine(),text:q,image,json:true,maxTokens:4096,think:thinkOn});
+      const req=buildRequest(provider,key,model,{system:EST_SYSTEM+stackLine(),text:q,image,json:true,maxTokens:4096,think:thinkOn,history});
       const raw=await streamLLM(req,null);
       const clean=raw.replace(/```json|```/g,"").trim();
       if(!clean || clean==="{") throw new Error("AI ตอบว่าง/ไม่เป็น JSON (อาจถูกตัดหรือ model ไม่รองรับ json mode) — ลองใหม่ หรือเปลี่ยน model");

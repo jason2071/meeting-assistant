@@ -2,14 +2,16 @@
 // (classic script; loaded in numeric order — top-level globals shared across files)
 
 // ── LLM call (streaming) ──
-function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024, think=false}){
+function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024, think=false, history=[]}){
   if(p==="gemini"){
     const parts=[{text}];
     if(image) parts.push({inline_data:{mime_type:"image/jpeg",data:image}});
+    // multi-turn: prior turns ก่อน current (role assistant → "model")
+    const hist=history.map(h=>({role:h.role==="assistant"?"model":"user",parts:[{text:h.text}]}));
     return {
       url:`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`,
       headers:{"Content-Type":"application/json"},
-      body:{ systemInstruction:{parts:[{text:system}]}, contents:[{role:"user",parts}],
+      body:{ systemInstruction:{parts:[{text:system}]}, contents:[...hist,{role:"user",parts}],
         generationConfig:{ maxOutputTokens:maxTokens, ...(think?{}:{thinkingConfig:{thinkingBudget:0}}),   // think=false → ปิด thinking
           ...(json?{responseMimeType:"application/json"}:{}) } },
       extract:(j)=>(j.candidates?.[0]?.content?.parts||[]).map(x=>x.text||"").join(""),
@@ -21,7 +23,8 @@ function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024,
       ? [{type:"image",source:{type:"base64",media_type:"image/jpeg",data:image}},{type:"text",text}]
       : [{type:"text",text}];
     // Claude has no JSON-mode flag — prefill the assistant turn with "{" to force a JSON object.
-    const messages=[{role:"user",content}];
+    // multi-turn: prior turns ก่อน current user; json prefill ต้องอยู่ท้ายสุดเสมอ
+    const messages=[...history.map(h=>({role:h.role,content:h.text})),{role:"user",content}];
     if(json) messages.push({role:"assistant",content:"{"});
     return {
       url:"https://api.anthropic.com/v1/messages",
@@ -46,7 +49,7 @@ function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024,
     url, headers,
     // ไม่ใส่ max_tokens สำหรับ openai/openrouter — gpt-5 reasoning เผา token แล้วเหลือ output ว่าง (est ได้ JSON ว่าง),
     // และบาง model reject max_tokens (ต้อง max_completion_tokens). ปล่อยใช้ default ของ model (กว้างพอ)
-    body:{ model, stream:true, stream_options:{include_usage:true}, messages:[{role:"system",content:system},{role:"user",content:userContent}],
+    body:{ model, stream:true, stream_options:{include_usage:true}, messages:[{role:"system",content:system},...history.map(h=>({role:h.role,content:h.text})),{role:"user",content:userContent}],
       ...(p==="openrouter"&&!think?{reasoning:{enabled:false}}:{}),   // OpenRouter: think=false → ปิด reasoning
       ...(json?{response_format:{type:"json_object"}}:{}) },
     extract:(j)=>j.choices?.[0]?.delta?.content||"",
