@@ -78,10 +78,17 @@ const $ = (id)=>document.getElementById(id);
 const providerSel=$("provider"), modelInp=$("model"), modelSel=$("modelSel"), keyInp=$("apikey"), keyHint=$("keyHint");
 const fetchBtn=$("fetchModels"), freeBtn=$("freeFilter"), modelStatus=$("modelStatus"), silenceInp=$("silenceSec");
 const results=$("results"), empty=$("empty"), errBox=$("error"), statusEl=$("status");
-function showError(msg){ errBox.style.display=msg?"flex":"none"; errBox.textContent = msg?("⚠ "+msg):""; }
+// toast: แจ้งเตือนที่มองเห็นเสมอใน main window (#error อยู่ใน #viewCurrent ที่ซ่อน → เงียบ)
+function toast(msg){
+  const t=$("toast"); if(!t) return;
+  clearTimeout(toast._t);
+  if(!msg){ t.style.display="none"; t.textContent=""; return; }
+  t.textContent="⚠ "+msg; t.style.display="block";
+  toast._t=setTimeout(()=>{ t.style.display="none"; }, 4000);
+}
+function showError(msg){ errBox.style.display=msg?"flex":"none"; errBox.textContent = msg?("⚠ "+msg):""; if(msg) toast(msg); }
 const dot=$("dot"), countEl=$("count");
-const homeListEl=$("homeList"), oldMetaEl=$("oldMeta"), resultsOld=$("resultsOld"),
-  curTitleEl=$("curTitle"), fontRange=$("fontRange"), fontVal=$("fontVal");
+const homeListEl=$("homeList"), curTitleEl=$("curTitle"), fontRange=$("fontRange"), fontVal=$("fontVal");
 
 // ── Settings init ──
 function modelKey(p){ return "ma_model_"+p; }

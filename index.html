@@ -21,6 +21,7 @@
 </head>
 <body>
 <video id="screenVideo" muted playsinline style="display:none"></video>
+<div id="toast" role="alert" style="display:none"></div>
 <div class="app">
   <main class="view">
 
@@ -67,6 +68,7 @@
           </div>
           <button id="startBtn" class="newbtn transition-all hover:brightness-110 active:scale-95"
             style="width:100%;padding:12px;font-size:15px;font-weight:700;letter-spacing:.02em">▶ เริ่มใหม่</button>
+          <button id="resumeBtn" type="button" class="pill" style="display:none;width:100%;justify-content:center;padding:11px">🪟 เปิดหน้าต่างแชท (session ปัจจุบัน)</button>
         </div>
 
         <div style="margin-top:26px">
@@ -179,18 +181,11 @@
       </div>
     </div>
 
-    <!-- ───── OLD session: readonly chat ───── -->
-    <div id="viewOld" style="display:none" class="chat-wrap">
-      <div class="chat-head" id="oldMeta"></div>
-      <div id="resultsOld" class="chat-msgs"></div>
-    </div>
-
     <!-- ───── CURRENT: chat — headless engine (chat แสดงในหน้าต่างลอยเท่านั้น; เก็บ DOM ไว้เป็น mirror source + composer proxy) ───── -->
     <div id="viewCurrent" class="chat-wrap" style="display:none">
       <header class="chat-head">
         <!-- left group: nav + identity -->
         <div class="chat-head-left">
-          <button class="home-link" id="curHomeLink" title="กลับหน้าหลัก">← หน้าหลัก</button>
           <div id="dot" class="dot"></div>
           <span id="curMode" class="mode-badge">🧠 ถาม AI</span>
           <span id="curTitle" class="chat-title">Session ใหม่</span>

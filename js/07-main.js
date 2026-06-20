@@ -44,7 +44,7 @@ refreshStatus();
 
 // ── Sessions (history) + view routing ──
 // เก็บใน IndexedDB (js/02). โหลดเข้า memory map SESS ตอน init แล้วอ่าน sync; เขียน IDB fire-and-forget.
-let viewName="current", oldViewId=null, curId=store.get("ma_cur")||null, curSess=null;
+let viewName="current", curId=store.get("ma_cur")||null, curSess=null;
 let SESS = {};   // id → session เต็ม (in-memory cache ของ IndexedDB)
 function sessIndex(){   // derive index จาก SESS (sort ใหม่→เก่า)
   return Object.values(SESS)
@@ -94,7 +94,6 @@ function deleteSession(id){
   if(!confirm("ลบ session นี้? ไม่สามารถกู้คืนได้")) return;
   delete SESS[id]; idbDel(id);
   if(id===curId){ curId=null; curSess=null; store.remove("ma_cur"); results.innerHTML=""; items=0; bumpCount(); setCurTitle("Session ใหม่"); }
-  if(viewName==="old" && oldViewId===id){ showView("home"); }
   renderSessions();
 }
 function renderSessions(){
@@ -102,32 +101,32 @@ function renderSessions(){
   homeListEl.innerHTML = ix.length
     ? ix.map(s=>{
         const md=s.mode || (loadSess(s.id)||{}).mode || "qa";   // fallback ให้ session เก่าที่ index ยังไม่มี mode
-        return `<div class="home-card transition-all hover:-translate-y-0.5 hover:shadow-xl" data-id="${s.id}"><span class="m mode-badge">${esc(MODE_LABEL[md]||MODE_LABEL.qa)}</span><div class="t">${esc(s.title||"Session ใหม่")}</div><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}" aria-label="ลบ session ${esc(s.title||"Session ใหม่")}">✕</button></div>`;
+        const cur=s.id===curId;
+        return `<div class="home-card${cur?" active":""} transition-all hover:-translate-y-0.5 hover:shadow-xl" data-id="${s.id}"><span class="m mode-badge">${esc(MODE_LABEL[md]||MODE_LABEL.qa)}</span>${cur?'<span class="cur-badge">● กำลังใช้</span>':''}<div class="t">${esc(s.title||"Session ใหม่")}</div><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}" aria-label="ลบ session ${esc(s.title||"Session ใหม่")}">✕</button></div>`;
       }).join("")
     : `<div class="side-empty">ยังไม่มีประวัติ — กดเริ่มใหม่ด้านบน</div>`;
+  const rb=$("resumeBtn"); if(rb) rb.style.display = (curId && curSess) ? "flex" : "none";   // ปุ่มเปิด float กลับ
 }
 function showView(name){
   viewName=name;
-  // เหลือแค่ home/settings ที่แสดงในหน้าต่างหลัก; chat (current/old) เป็น headless — แสดงในหน้าต่างลอย
+  // เหลือแค่ home/settings ที่แสดงในหน้าต่างหลัก; chat เป็น headless — แสดงในหน้าต่างลอย
   $("viewHome").style.display = name==="home"?"block":"none";
   $("viewSettings").style.display = name==="settings"?"block":"none";
   $("viewCurrent").style.display = "none";   // headless engine (mirror source + composer proxy)
-  $("viewOld").style.display = "none";        // readonly history แสดงในหน้าต่างลอยแทน
   renderSessions();
 }
 function openSession(id){
   if(id===curId){
-    // resume session ที่ active → live (แก้ไขได้) ในหน้าต่างลอย
-    floatReadonly=false;
-    if(curSess){ renderSessionInto(results, curSess, false); setCurTitle(curSess.title||"Session ใหม่"); }  // กรณีถูก readonly view ทับ #results
+    // resume session ที่ active → live ในหน้าต่างลอย (stopped → view-only)
+    floatReadonly = !!(curSess && curSess.stopped);
+    if(curSess){ renderSessionInto(results, curSess); setCurTitle(curSess.title||"Session ใหม่"); }  // กรณีถูก readonly view ทับ #results
     showView("home"); openOverlay(); return;
   }
   const s=loadSess(id); if(!s){ showView("home"); return; }
   // session เก่า → ดูอย่างเดียวในหน้าต่างลอย (ไม่แตะ curSess/curId — live session ยังอยู่ใน memory/IDB)
-  oldViewId=id;
   floatReadonly=true;
   setCurTitle(s.title||"Session");
-  renderSessionInto(results, s, false);       // วาดลง mirror #results → หน้าต่างลอยสะท้อนอัตโนมัติ
+  renderSessionInto(results, s);       // วาดลง mirror #results → หน้าต่างลอยสะท้อนอัตโนมัติ
   showView("home"); openOverlay();
 }
 function sessClick(e){
@@ -138,7 +137,7 @@ function sessClick(e){
 }
 homeListEl.addEventListener("click", sessClick);
 $("startBtn").onclick=()=>{ setMode(homeMode); newSession(); };  // โหมดที่เลือกบนหน้าหลัก → ล็อกต่อ session; newSession เปิดหน้าต่างลอยเอง
-$("curHomeLink").onclick=()=>{ closeOverlay(); showView("home"); };
+$("resumeBtn").onclick=()=>{ if(curId) openSession(curId); };    // เปิดหน้าต่างลอยกลับสู่ session ปัจจุบัน
 $("settingsBtn").onclick=()=>showView("settings");
 $("settingsBack").onclick=()=>showView("home");
 

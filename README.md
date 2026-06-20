@@ -19,12 +19,13 @@
 
 ## Layout
 
-**3 view (lobby → chat)** ไม่มี sidebar/navbar — แต่งด้วย Tailwind:
-- **หน้าหลัก / lobby** (`#viewHome`) — settings (provider/model/key/silence/font) + **เลือกโหมด** (ถาม AI / ประเมินงาน) + ปุ่ม **▶ เริ่ม session** + ประวัติ session (badge บอกโหมด, คลิกเปิด, × ลบ มี confirm)
-- **current session** (`#viewCurrent`) — แสดงแบบ **chat**: bubble ชิดซ้ายหมด มี role label (🗣 คนถาม teal / 🤖 AI), composer ติดล่าง (mic/screen + input); header มี ← หน้าหลัก + badge โหมด + ไทย/Eng + ⚡ + ✨
-- **session เก่า** (`#viewOld`) — chat ย้อนหลัง readonly + ปุ่มกลับ
+**Chat อยู่ในหน้าต่างลอย (floating) ที่เดียว** — main window เหลือแค่ lobby + settings (ไม่มี sidebar/navbar):
+- **หน้าหลัก / lobby** (`#viewHome`) — **เลือกโหมด** (ถาม AI / ประเมินงาน) + Stack/บริบท + ปุ่ม **▶ เริ่ม** (เปิดหน้าต่างลอย) + ปุ่ม **🪟 เปิดหน้าต่างแชท** (กลับ session ปัจจุบัน, โผล่เมื่อมี session) + ประวัติ session (badge โหมด, **● กำลังใช้** = session ปัจจุบัน, คลิกเปิด, × ลบ มี confirm) + ⚙ ไปหน้าตั้งค่า
+- **หน้าต่างลอย (floating)** = surface เดียวของ chat — bubble + composer (mic/screen/auto/lang/input/send) + header (title/mode/stat) + error/status mirror. Electron = หน้าต่าง always-on-top จริง; browser = Document PiP (Chrome/Edge 116+). คลิก session เก่าจากประวัติ → เปิดแบบ **readonly** ในหน้าต่างลอย
+- **`#viewCurrent`** = headless engine (ซ่อนไว้ `display:none`) — เป็น mirror source (`#results`) + proxy ปุ่ม (mic/screen/…) ของหน้าต่างลอย ไม่ได้แสดงผลเอง
+- **ตั้งค่า** (`#viewSettings`) — provider/model/key + ถอดเสียง + **คีย์ลัด** (เริ่ม/หยุดฟัง · ส่งเลย · แชร์จอ · ออโต้ส่ง)
 
-**หน้าหลัก = default** ตอนเปิดแอป (ตั้งค่าก่อนเริ่ม); current auto-save ต่อเนื่อง; เริ่มแชท = session ใหม่; reload → กลับหน้าหลัก (session เดิมอยู่ในประวัติ คลิกเปิดต่อได้). settings อยู่หน้าหลักที่เดียว (ในแชทกด ← หน้าหลักไปแก้)
+**หน้าหลัก = default** ตอนเปิดแอป; current auto-save ต่อเนื่อง; เริ่มแชท = session ใหม่ (เปิดหน้าต่างลอย); reload → กลับหน้าหลัก (คลิก session / 🪟 เปิดหน้าต่างแชท เพื่อกลับเข้า chat). error ที่มองเห็นเสมอผ่าน toast (main) + error bar (หน้าต่างลอย)
 
 **Tailwind** มาจาก [Play CDN](https://cdn.tailwindcss.com) (`corePlugins.preflight:false` กัน reset ทับ CSS เดิม) — ต้องต่อเน็ตตอนโหลดหน้า
 

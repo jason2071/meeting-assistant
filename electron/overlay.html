@@ -61,6 +61,13 @@
     .fc-toolbar .iconbtn { background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18); color:#fff; width:30px; height:30px; }
     .fc-toolbar .fc-stat { margin-left:auto; font-size:11px; color:#fff; opacity:.8; text-shadow:0 1px 3px rgba(0,0,0,.6); }
     body.readonly .fc-toolbar { display:none; }
+    /* status (กำลังฟัง/เห็นจอ) + error mirror + empty hint */
+    #ovStatus { flex:none; display:none; padding:5px 12px; font-size:11px; color:#86f1e2;
+      text-shadow:0 1px 3px rgba(0,0,0,.7); }
+    #ovErr { flex:none; display:none; padding:7px 12px; font-size:12px; color:#fff;
+      background:rgba(201,58,52,.85); text-shadow:0 1px 2px rgba(0,0,0,.5); }
+    .float-empty { padding:24px 12px; text-align:center; font-size:13px; color:#fff; opacity:.75;
+      text-shadow:0 1px 3px rgba(0,0,0,.7); }
   </style>
 </head>
 <body>
@@ -79,6 +86,8 @@
   </div>
   <div id="overlayResults" class="chat-msgs pip-msgs"></div>
   <div id="ovRoNote">🔒 ดูอย่างเดียว</div>
+  <div id="ovStatus"></div>
+  <div id="ovErr"></div>
   <div class="float-composer">
     <div class="fc-inputrow">
       <button class="fc-mic mic">🎤 เริ่มฟัง</button>
@@ -96,7 +105,8 @@
 
     // ── mirror คำตอบจาก main ──
     const results = $("overlayResults");
-    api.onOverlayHTML((html) => { results.innerHTML = html; results.scrollTop = results.scrollHeight; });
+    const EMPTY_HINT = '<div class="float-empty">พิมพ์หรือพูดคำถามด้านล่างเพื่อเริ่ม</div>';
+    api.onOverlayHTML((html) => { results.innerHTML = html || EMPTY_HINT; results.scrollTop = results.scrollHeight; });
 
     // ── sync ปุ่ม control (label/display/on) จาก main ──
     api.onOverlayControls((s) => {
@@ -110,6 +120,9 @@
       if (s.fs) document.documentElement.style.setProperty("--fs", s.fs);   // ขนาดฟอนต์ตาม slider หน้าหลัก
       document.body.classList.toggle("readonly", !!s.readonly);             // ดู session เก่า → ซ่อน composer/toolbar
       if (s.title != null) $("ovTitle").textContent = (s.mode ? s.mode + " · " : "") + s.title;
+      // error + status mirror (เดิมอยู่ใน #viewCurrent ที่ซ่อน → เงียบ)
+      const errEl = $("ovErr"); errEl.textContent = s.error || ""; errEl.style.display = s.error ? "block" : "none";
+      const stEl = $("ovStatus"); stEl.textContent = s.status || ""; stEl.style.display = s.status ? "block" : "none";
       // cold controls: lang / auto / clear / stat
       const q = (c) => document.querySelector("." + c);
       if (s.langShow != null) q("fc-lang").style.display = s.langShow ? "" : "none";   // ไทย/Eng เฉพาะ web STT

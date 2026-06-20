@@ -43,6 +43,10 @@
     font-family:Inter,system-ui,-apple-system,sans-serif;
     -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
   .wrap { max-width:820px; margin:0 auto; padding:24px 16px 120px; }
+  /* toast: แจ้งเตือน error ที่มองเห็นเสมอ (top-center) */
+  #toast { position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:9999;
+    background:var(--red); color:#fff; padding:10px 16px; border-radius:var(--r-md);
+    font-size:13px; font-weight:600; box-shadow:var(--shadow-lg); max-width:90vw; }
   h1 { font-size:18px; font-weight:700; letter-spacing:-0.2px; margin:0; }
   .row { display:flex; align-items:center; gap:10px; }
   .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
@@ -350,6 +354,9 @@
     transition:border-color .15s, box-shadow .15s, transform .08s, background .15s; }
   .home-card:hover { border-color:var(--teal); background:var(--teal-a06);
     transform:translateY(-1px); box-shadow:var(--shadow-md); }
+  .home-card.active { border-color:var(--teal); box-shadow:0 0 0 1px var(--teal-a25); }
+  .cur-badge { font-size:10px; font-weight:700; color:var(--teal); background:var(--teal-a10);
+    border:1px solid var(--teal-a25); border-radius:var(--r-sm); padding:2px 7px; white-space:nowrap; }
   .home-card .t { flex:1; font-size:14px; font-weight:600; }
   .home-card .d { font-size:11px; color:var(--muted); }
   .home-card .del { color:var(--muted); border:none; background:none; font-size:13px; padding:4px 8px; }
@@ -394,6 +401,10 @@
     font-weight:600; color:var(--muted); border-top:1px solid var(--border); background:var(--panel2); }
   .pip-body.readonly .float-composer { display:none; }
   .pip-body.readonly .pip-ro-note { display:block; }
+  /* PiP: status / error mirror + empty hint */
+  .pip-body .pip-status { flex:none; padding:5px 12px; font-size:11px; color:var(--teal); }
+  .pip-body .pip-err { flex:none; padding:7px 12px; font-size:12px; color:#fff; background:rgba(201,58,52,.9); }
+  .pip-body .float-empty { padding:24px 12px; text-align:center; font-size:13px; color:var(--muted); }
   /* cold-control toolbar ใน PiP (lang/auto/clear/stat ย้ายมาจาก chat header) */
   .pip-body .fc-toolbar { flex:none; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     padding:6px 10px; background:var(--panel2); border-bottom:1px solid var(--border); }
