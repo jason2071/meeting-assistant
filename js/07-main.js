@@ -79,7 +79,8 @@ function newSession(){
   curId=null; curSess=null; ensureSession();
   results.innerHTML=""; clearVoicePreview(); items=0; bumpCount();
   setCurTitle("Session ใหม่");
-  renderSessions(); showView("current");
+  floatReadonly=false;                 // session ใหม่ = แก้ไขได้
+  renderSessions(); showView("home"); openOverlay();   // chat อยู่ในหน้าต่างลอย — main window คง lobby
 }
 function saveItem(item){
   ensureSession();
@@ -107,21 +108,27 @@ function renderSessions(){
 }
 function showView(name){
   viewName=name;
-  // chat views ต้องเป็น flex (column) ให้ header/composer fix + messages scroll; block จะทับ .chat-wrap พัง
+  // เหลือแค่ home/settings ที่แสดงในหน้าต่างหลัก; chat (current/old) เป็น headless — แสดงในหน้าต่างลอย
   $("viewHome").style.display = name==="home"?"block":"none";
   $("viewSettings").style.display = name==="settings"?"block":"none";
-  $("viewCurrent").style.display = name==="current"?"flex":"none";
-  $("viewOld").style.display = name==="old"?"flex":"none";
+  $("viewCurrent").style.display = "none";   // headless engine (mirror source + composer proxy)
+  $("viewOld").style.display = "none";        // readonly history แสดงในหน้าต่างลอยแทน
   renderSessions();
 }
 function openSession(id){
-  if(id===curId){ showView("current"); return; }
+  if(id===curId){
+    // resume session ที่ active → live (แก้ไขได้) ในหน้าต่างลอย
+    floatReadonly=false;
+    if(curSess){ renderSessionInto(results, curSess, false); setCurTitle(curSess.title||"Session ใหม่"); }  // กรณีถูก readonly view ทับ #results
+    showView("home"); openOverlay(); return;
+  }
   const s=loadSess(id); if(!s){ showView("home"); return; }
+  // session เก่า → ดูอย่างเดียวในหน้าต่างลอย (ไม่แตะ curSess/curId — live session ยังอยู่ใน memory/IDB)
   oldViewId=id;
-  oldMetaEl.innerHTML=`<button class="back-btn" id="backToHome">← กลับ</button><h2>${esc(s.title||"Session")}</h2><div class="sub">${esc(MODE_LABEL[s.mode]||MODE_LABEL.qa)} · ${fmtDate(s.createdAt)} · ${esc(s.provider||"")} · ${esc(s.model||"")} · ${(s.items||[]).length} คำถาม</div>`;
-  oldMetaEl.querySelector("#backToHome").onclick=()=>showView("home");
-  renderSessionInto(resultsOld, s, false);
-  showView("old");
+  floatReadonly=true;
+  setCurTitle(s.title||"Session");
+  renderSessionInto(results, s, false);       // วาดลง mirror #results → หน้าต่างลอยสะท้อนอัตโนมัติ
+  showView("home"); openOverlay();
 }
 function sessClick(e){
   const del=e.target.closest("[data-del]");
@@ -130,7 +137,7 @@ function sessClick(e){
   if(it) openSession(it.getAttribute("data-id"));
 }
 homeListEl.addEventListener("click", sessClick);
-$("startBtn").onclick=()=>{ setMode(homeMode); newSession(); openOverlay(); };  // โหมดที่เลือกบนหน้าหลัก → ล็อกต่อ session + เปิดหน้าต่างลอย
+$("startBtn").onclick=()=>{ setMode(homeMode); newSession(); };  // โหมดที่เลือกบนหน้าหลัก → ล็อกต่อ session; newSession เปิดหน้าต่างลอยเอง
 $("curHomeLink").onclick=()=>{ closeOverlay(); showView("home"); };
 $("settingsBtn").onclick=()=>showView("settings");
 $("settingsBack").onclick=()=>showView("home");

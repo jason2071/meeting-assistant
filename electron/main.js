@@ -1,11 +1,20 @@
 // electron/main.js — desktop wrapper entry
 // main window = แอปเต็ม (index.html); overlay window = หน้าต่างลอย always-on-top แยก (mirror คำตอบ)
 // sync 2 ทางผ่าน IPC; โค้ดฝั่ง renderer gate ด้วย window.electronAPI (preload)
-const { app, BrowserWindow, ipcMain, session, desktopCapturer } = require("electron");
+const { app, BrowserWindow, ipcMain, session, desktopCapturer, globalShortcut } = require("electron");
 const path = require("path");
+const fs = require("fs");
 
 const ROOT = path.join(__dirname, "..");
 let mainWin = null, overlayWin = null;
+
+// ── overlay window size/position: จำไว้ข้ามครั้ง (ไฟล์ใน userData) ──
+const OV_DEFAULT = { width: 480, height: 640 };
+function ovBoundsPath() { return path.join(app.getPath("userData"), "overlay-bounds.json"); }
+function loadOvBounds() { try { return JSON.parse(fs.readFileSync(ovBoundsPath(), "utf8")); } catch { return null; } }
+function saveOvBounds() {
+  try { if (overlayWin && !overlayWin.isDestroyed()) fs.writeFileSync(ovBoundsPath(), JSON.stringify(overlayWin.getBounds())); } catch {}
+}
 
 // security: ทุก renderer — ห้ามเปิดหน้าต่างใหม่ + ห้าม navigate ออกจากไฟล์ที่โหลด (กัน redirect ไป origin อื่น)
 app.on("web-contents-created", (_e, contents) => {
@@ -32,8 +41,11 @@ function createMain() {
 
 function createOverlay() {
   if (overlayWin && !overlayWin.isDestroyed()) { overlayWin.show(); overlayWin.focus(); return; }
+  const saved = loadOvBounds();   // จำขนาด/ตำแหน่งที่ user ปรับไว้
   overlayWin = new BrowserWindow({
-    width: 380, height: 520,
+    width: (saved && saved.width) || OV_DEFAULT.width,
+    height: (saved && saved.height) || OV_DEFAULT.height,
+    ...(saved && saved.x != null && saved.y != null ? { x: saved.x, y: saved.y } : {}),
     frame: false, alwaysOnTop: true, skipTaskbar: true, resizable: true,
     minWidth: 280, minHeight: 240,
     transparent: true, backgroundColor: "#00000000", hasShadow: false,   // โปร่งเฉพาะ bg (alpha คุมด้วย CSS) — font/bubble ชัด 100%
@@ -50,6 +62,9 @@ function createOverlay() {
   overlayWin.loadFile(path.join(__dirname, "overlay.html"));
   // โหลด overlay ไม่สำเร็จ → ปิดทิ้ง เพื่อให้ "overlay-closed" ยิงกลับ → renderer แก้ elecOpen ไม่ให้ค้าง true
   overlayWin.webContents.on("did-fail-load", () => destroyOverlay());
+  overlayWin.on("resized", saveOvBounds);   // จำขนาดหลัง user ขยาย/ย่อ
+  overlayWin.on("moved", saveOvBounds);      // จำตำแหน่งหลัง user ลาก
+  overlayWin.on("close", saveOvBounds);
   overlayWin.on("closed", () => {
     overlayWin = null;
     if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("overlay-closed");
@@ -81,6 +96,18 @@ ipcMain.on("overlay-action", (_e, payload) => {
 const fromOverlay = (e) => overlayWin && !overlayWin.isDestroyed() && BrowserWindow.fromWebContents(e.sender) === overlayWin;
 ipcMain.on("set-always-on-top", (e, b) => { if (fromOverlay(e)) overlayWin.setAlwaysOnTop(!!b, "screen-saver"); });
 ipcMain.on("set-content-protection", (e, b) => { if (fromOverlay(e)) overlayWin.setContentProtection(!!b); });
+
+// ── global hotkeys: register accelerator → ยิง "hotkey" action กลับ main renderer (ทำงานแม้แอปไม่ focus) ──
+// combos = { action: "CommandOrControl+Shift+L", ... }; main renderer ส่งมาทุกครั้งที่ตั้งค่าเปลี่ยน
+ipcMain.on("register-hotkeys", (_e, combos) => {
+  try { globalShortcut.unregisterAll(); } catch {}
+  if (!combos) return;
+  for (const [action, accel] of Object.entries(combos)) {
+    if (!accel) continue;
+    try { globalShortcut.register(accel, () => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("hotkey", action); }); } catch {}
+  }
+});
+app.on("will-quit", () => { try { globalShortcut.unregisterAll(); } catch {} });
 
 // loopback (ฟังเสียงระบบ): one-shot flag — renderer ส่ง "prep-loopback" ก่อน getDisplayMedia
 // → handler grant จอหลัก+audio:'loopback' แทนเปิด picker (renderer ทิ้ง video เก็บแต่เสียง)
