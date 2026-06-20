@@ -73,6 +73,9 @@ let busy = false;
 let silenceMs = +store.get("ma_silence") || 1800;  // auto-send delay after silence (ปรับได้, default ถามสด)
 let thinkOn = store.get("ma_think")==="1";  // ให้ model คิดก่อนตอบ (thinking/reasoning) — default ปิด (เร็ว+ไม่กิน token)
 let contextOn = store.get("ma_context")!=="0";  // ส่งประวัติบทสนทนา (multi-turn) — default เปิด; ปิด = ถามเดี่ยวประหยัด token
+let followupOn = store.get("ma_followup")!=="0";  // AI แนะนำคำถามต่อ (follow-up chips) — default เปิด; ปิด = ไม่ยิง call เพิ่ม
+// quick-ask presets (chip กดส่งทันที) — ใช้บ่อยตอนประชุม; แก้รายการได้ที่นี่
+const QUICKASKS = ["อธิบายโค้ดนี้","สรุปสั้นๆ","หา bug","เขียน test","ขั้นตอนถัดไป"];
 
 // ── DOM ──
 const $ = (id)=>document.getElementById(id);

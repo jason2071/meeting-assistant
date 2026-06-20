@@ -98,6 +98,13 @@ function addUserMsg(q, hadImage){
   results.appendChild(m); items++; bumpCount(); scrollBottom();
   return m;
 }
+// follow-up chips ใต้คำตอบ AI (data-ask → กดแล้วถามต่อ; มองเห็น/กดได้ในหน้าต่างลอยผ่าน mirror + delegation)
+function renderFollowups(bubble, arr){
+  if(!bubble||!arr||!arr.length) return;
+  const wrap=el("div","followups");
+  arr.forEach(t=>{ const b=el("button","chip-ask",esc(t)); b.type="button"; b.setAttribute("data-ask",t); wrap.appendChild(b); });
+  bubble.appendChild(wrap); scrollBottom();
+}
 function addAiMsg(){
   const m=el("div","msg ai");
   m.appendChild(roleLabel("ai"));
