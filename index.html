@@ -153,6 +153,15 @@
           </div>
         </div>
 
+        <!-- ───── คีย์ลัด (hotkeys) ───── -->
+        <div class="hk-head">คีย์ลัด <span class="settings-hint-inline">· Electron กดได้แม้แอปไม่ focus · browser เฉพาะตอน focus · ต้องมี Ctrl/Alt/Shift + คีย์อังกฤษบนคีย์บอร์ด</span></div>
+        <div id="hotkeys" class="settings-body">
+          <div class="sf-row"><span class="settings-label">🎤 เริ่ม/หยุดฟัง</span><button type="button" class="pill hk-btn" data-hk="mic">— ตั้งคีย์ —</button><button type="button" class="minibtn hk-clear" data-hk="mic" title="ล้างคีย์ลัด" style="display:none;width:28px;height:28px;padding:0">✕</button></div>
+          <div class="sf-row"><span class="settings-label">✂️ ส่งเลย</span><button type="button" class="pill hk-btn" data-hk="send">— ตั้งคีย์ —</button><button type="button" class="minibtn hk-clear" data-hk="send" title="ล้างคีย์ลัด" style="display:none;width:28px;height:28px;padding:0">✕</button></div>
+          <div class="sf-row"><span class="settings-label">🖥 แชร์/หยุดจอ</span><button type="button" class="pill hk-btn" data-hk="screen">— ตั้งคีย์ —</button><button type="button" class="minibtn hk-clear" data-hk="screen" title="ล้างคีย์ลัด" style="display:none;width:28px;height:28px;padding:0">✕</button></div>
+          <div class="sf-row"><span class="settings-label">⚡ เปิด/ปิดออโต้ส่ง</span><button type="button" class="pill hk-btn" data-hk="auto">— ตั้งคีย์ —</button><button type="button" class="minibtn hk-clear" data-hk="auto" title="ล้างคีย์ลัด" style="display:none;width:28px;height:28px;padding:0">✕</button></div>
+        </div>
+
         <details class="sysaudio adv-settings" id="advSettings" style="margin-top:20px">
           <summary>ตั้งค่าเพิ่มเติม</summary>
           <div class="sysaudio-body settings-body">
@@ -236,5 +245,6 @@
 <script src="js/06-render.js"></script>
 <script src="js/07-main.js"></script>
 <script src="js/08-overlay.js"></script>
+<script src="js/09-hotkeys.js"></script>
 </body>
 </html>

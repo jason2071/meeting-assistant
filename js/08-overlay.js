@@ -75,6 +75,7 @@ async function openPip(){
   d.body.appendChild(head); d.body.appendChild(bar); d.body.appendChild(wrap); d.body.appendChild(note); d.body.appendChild(comp);
   startMirror((html)=>{ wrap.innerHTML=html; wrap.scrollTop=wrap.scrollHeight; });
   wireFloatControls(d.body); syncFloatControls();
+  if(typeof hkMatch==="function") d.addEventListener("keydown", hkMatch);   // คีย์ลัด focus ในหน้าต่างลอย (browser)
   pipWin.addEventListener("pagehide", ()=>{ stopMirror(); pipWin=null; updateFloatBtn(); });
   updateFloatBtn();
 }

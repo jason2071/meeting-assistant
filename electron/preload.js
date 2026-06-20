@@ -28,4 +28,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // ── loopback (ฟังเสียงระบบ): บอก main ว่า getDisplayMedia ครั้งถัดไป = loopback ───
   prepLoopback: () => ipcRenderer.send("prep-loopback"),
+
+  // ── global hotkeys: main renderer ส่ง combo → main register; main ยิง "hotkey" กลับเมื่อกด ──
+  registerHotkeys: (combos) => ipcRenderer.send("register-hotkeys", combos),
+  onHotkey: (cb) => { ipcRenderer.removeAllListeners("hotkey"); ipcRenderer.on("hotkey", (_e, action) => cb(action)); },
 });

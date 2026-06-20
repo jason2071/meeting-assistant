@@ -1,7 +1,7 @@
 // electron/main.js — desktop wrapper entry
 // main window = แอปเต็ม (index.html); overlay window = หน้าต่างลอย always-on-top แยก (mirror คำตอบ)
 // sync 2 ทางผ่าน IPC; โค้ดฝั่ง renderer gate ด้วย window.electronAPI (preload)
-const { app, BrowserWindow, ipcMain, session, desktopCapturer } = require("electron");
+const { app, BrowserWindow, ipcMain, session, desktopCapturer, globalShortcut } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
@@ -96,6 +96,18 @@ ipcMain.on("overlay-action", (_e, payload) => {
 const fromOverlay = (e) => overlayWin && !overlayWin.isDestroyed() && BrowserWindow.fromWebContents(e.sender) === overlayWin;
 ipcMain.on("set-always-on-top", (e, b) => { if (fromOverlay(e)) overlayWin.setAlwaysOnTop(!!b, "screen-saver"); });
 ipcMain.on("set-content-protection", (e, b) => { if (fromOverlay(e)) overlayWin.setContentProtection(!!b); });
+
+// ── global hotkeys: register accelerator → ยิง "hotkey" action กลับ main renderer (ทำงานแม้แอปไม่ focus) ──
+// combos = { action: "CommandOrControl+Shift+L", ... }; main renderer ส่งมาทุกครั้งที่ตั้งค่าเปลี่ยน
+ipcMain.on("register-hotkeys", (_e, combos) => {
+  try { globalShortcut.unregisterAll(); } catch {}
+  if (!combos) return;
+  for (const [action, accel] of Object.entries(combos)) {
+    if (!accel) continue;
+    try { globalShortcut.register(accel, () => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("hotkey", action); }); } catch {}
+  }
+});
+app.on("will-quit", () => { try { globalShortcut.unregisterAll(); } catch {} });
 
 // loopback (ฟังเสียงระบบ): one-shot flag — renderer ส่ง "prep-loopback" ก่อน getDisplayMedia
 // → handler grant จอหลัก+audio:'loopback' แทนเปิด picker (renderer ทิ้ง video เก็บแต่เสียง)

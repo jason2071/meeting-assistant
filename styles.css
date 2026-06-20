@@ -240,6 +240,12 @@
   #settings.settings-body > .sf-row { padding-top:14px; border-top:1px solid var(--border-soft); }
   #settings.settings-body > .sf-row:first-child,
   #settings.settings-body > .sf:first-child { padding-top:0; border-top:none; }
+  /* ── คีย์ลัด (hotkeys) ── */
+  .hk-head { font-size:13px; font-weight:600; color:var(--text); margin:22px 0 8px; }
+  #hotkeys.settings-body { background:var(--panel); border:1px solid var(--border); border-radius:var(--r-lg);
+    padding:14px 18px; gap:10px; box-shadow:var(--shadow-sm); }
+  #hotkeys .hk-btn { min-width:150px; justify-content:center; font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+  #hotkeys .hk-btn.on { border-color:var(--teal); color:var(--teal); }
   /* field block (label above input) */
   .sf { display:flex; flex-direction:column; gap:5px; }
   /* inline row (label + control side-by-side) */
