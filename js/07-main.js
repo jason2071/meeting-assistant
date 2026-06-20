@@ -26,7 +26,7 @@ async function submit(override){
       const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:4096,think:thinkOn,history});  // maxTokens สูงกัน thinking กิน budget; ความสั้นคุมด้วย prompt
       const full=await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); scrollBottom(); });
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
-      if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}); }
+      if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}); genFollowups(aiBubble, q, full); }
     }catch(e){ ans.textContent=""; ans.appendChild(el("span","warn","⚠ "+esc(e.message))); }
   } else {
     const bubble=addAiMsg();
@@ -45,6 +45,20 @@ async function submit(override){
 }
 
 refreshStatus();
+
+// ── follow-up chips: ยิง LLM เบาๆ ขอคำถามต่อ 3 ข้อ (qa เท่านั้น, gate followupOn) ──
+async function genFollowups(bubble, q, answer){
+  if(!followupOn || mode!=="qa") return;
+  const key=keyInp.value.trim(), model=modelInp.value.trim(); if(!key) return;
+  try{
+    const sys="เสนอคำถามต่อที่ผู้ใช้น่าจะถามต่อจากคำตอบ 3 ข้อ สั้นกระชับ (<=8 คำ) ภาษาไทย — ตอบเป็น JSON array ของ string เท่านั้น ห้ามมีอย่างอื่น";
+    const req=buildRequest(provider,key,model,{system:sys,text:`คำถาม: ${q}\nคำตอบ: ${(answer||"").slice(0,1500)}`,json:false,maxTokens:256,think:false});
+    const raw=await streamLLM(req,null);
+    const m=(raw||"").match(/\[[\s\S]*\]/); if(!m) return;
+    const arr=JSON.parse(m[0]); if(!Array.isArray(arr)) return;
+    renderFollowups(bubble, arr.filter(x=>typeof x==="string"&&x.trim()).slice(0,3));
+  }catch{}   // เงียบ — follow-up เป็น nice-to-have
+}
 
 // ── Sessions (history) + view routing ──
 // เก็บใน IndexedDB (js/02). โหลดเข้า memory map SESS ตอน init แล้วอ่าน sync; เขียน IDB fire-and-forget.

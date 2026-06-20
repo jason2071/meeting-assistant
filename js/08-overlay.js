@@ -7,6 +7,7 @@ const IS_ELECTRON = !!(window.electronAPI && window.electronAPI.isElectron);
 let floatObserver=null, floatSink=null, pipWin=null, elecOpen=false;
 let floatReadonly=false;   // true = ดู session เก่าอย่างเดียว (ซ่อน composer ในหน้าต่างลอย)
 const PIP_EMPTY_HINT='<div class="float-empty">พิมพ์หรือพูดคำถามด้านล่างเพื่อเริ่ม</div>';   // โชว์ตอน chat ว่าง
+function quickChipsHTML(){ return (typeof QUICKASKS!=="undefined"?QUICKASKS:[]).map(a=>`<button type="button" class="chip-ask" data-ask="${esc(a)}">${esc(a)}</button>`).join(""); }
 
 // ── mirror logic (#results → sink: DOM ของ PiP หรือ push ผ่าน IPC) — coalesce ด้วย rAF ──
 function syncOverlay(){
@@ -74,10 +75,11 @@ async function openPip(){
   const stEl=d.createElement("div"); stEl.className="pip-status"; stEl.style.display="none";   // สถานะ (กำลังฟัง/เห็นจอ)
   const errEl=d.createElement("div"); errEl.className="pip-err"; errEl.style.display="none";   // error (mirror จาก #error)
   const comp=d.createElement("div"); comp.className="float-composer";
-  comp.innerHTML='<div class="fc-inputrow"><button class="fc-mic mic"></button><button class="fc-stop pill stopbtn" style="display:none"></button><input class="fc-input" placeholder="พิมพ์คำถาม…" /><button class="fc-send send">➤</button></div>';
+  comp.innerHTML='<div class="fc-quick">'+quickChipsHTML()+'</div><div class="fc-inputrow"><button class="fc-mic mic"></button><button class="fc-stop pill stopbtn" style="display:none"></button><input class="fc-input" placeholder="พิมพ์คำถาม…" /><button class="fc-send send">➤</button></div>';
   d.body.appendChild(head); d.body.appendChild(bar); d.body.appendChild(wrap); d.body.appendChild(note); d.body.appendChild(stEl); d.body.appendChild(errEl); d.body.appendChild(comp);
   startMirror((html)=>{ wrap.innerHTML = html || PIP_EMPTY_HINT; wrap.scrollTop=wrap.scrollHeight; });
   wireFloatControls(d.body); syncFloatControls();
+  d.body.addEventListener("click",(e)=>{ const c=e.target.closest(".chip-ask"); if(c){ const t=c.getAttribute("data-ask"); if(t) submit(t); } });   // quick + follow-up chips → ถาม
   if(typeof hkMatch==="function") d.addEventListener("keydown", hkMatch);   // คีย์ลัด focus ในหน้าต่างลอย (browser)
   pipWin.addEventListener("pagehide", ()=>{ stopMirror(); pipWin=null; updateFloatBtn(); });
   updateFloatBtn();
@@ -125,6 +127,7 @@ function syncFloatControls(){
   if(IS_ELECTRON){
     if(!elecOpen) return;
     const st={ readonly:floatReadonly, title, mode:modeLbl, stat:statTxt, langShow, error:errTxt, status:statusTxt,
+      quick:(typeof QUICKASKS!=="undefined"?QUICKASKS:[]),
       th:$("thBtn")&&$("thBtn").classList.contains("on"), en:$("enBtn")&&$("enBtn").classList.contains("on"),
       auto:$("autoBtn")&&$("autoBtn").classList.contains("on") };
     [["mic","micBtn"],["stop","stopBtn"],["screen","screenBtn"]].forEach(([k,id])=>{
@@ -171,6 +174,7 @@ if(IS_ELECTRON){
     else if(action==="th") $("thBtn").click();
     else if(action==="en") $("enBtn").click();
     else if(action==="auto") $("autoBtn").click();
+    else if(action==="ask") submit(payload);   // quick/follow-up chip จากหน้าต่างลอย
   });
   electronAPI.onOverlayClosed(()=>{ elecOpen=false; stopMirror(); updateFloatBtn(); });
 }

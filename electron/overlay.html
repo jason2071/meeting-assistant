@@ -68,6 +68,12 @@
       background:rgba(201,58,52,.85); text-shadow:0 1px 2px rgba(0,0,0,.5); }
     .float-empty { padding:24px 12px; text-align:center; font-size:13px; color:#fff; opacity:.75;
       text-shadow:0 1px 3px rgba(0,0,0,.7); }
+    /* quick-ask + follow-up chips */
+    .fc-quick { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+    .followups { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .chip-ask { background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); color:#fff;
+      border-radius:999px; padding:5px 11px; font-size:12px; cursor:pointer; text-shadow:0 1px 2px rgba(0,0,0,.5); }
+    .chip-ask:hover { background:#fff; color:#3a2a5e; }
   </style>
 </head>
 <body>
@@ -89,6 +95,7 @@
   <div id="ovStatus"></div>
   <div id="ovErr"></div>
   <div class="float-composer">
+    <div class="fc-quick"></div>
     <div class="fc-inputrow">
       <button class="fc-mic mic">🎤 เริ่มฟัง</button>
       <button class="fc-stop pill stopbtn" style="display:none">✂️ ส่งเลย</button>
@@ -123,6 +130,12 @@
       // error + status mirror (เดิมอยู่ใน #viewCurrent ที่ซ่อน → เงียบ)
       const errEl = $("ovErr"); errEl.textContent = s.error || ""; errEl.style.display = s.error ? "block" : "none";
       const stEl = $("ovStatus"); stEl.textContent = s.status || ""; stEl.style.display = s.status ? "block" : "none";
+      // quick-ask chips (จาก main, single source QUICKASKS)
+      if (s.quick && !document.querySelector(".fc-quick").dataset.filled) {
+        document.querySelector(".fc-quick").innerHTML = s.quick.map(a =>
+          `<button type="button" class="chip-ask" data-ask="${a.replace(/"/g,"&quot;")}">${a.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}</button>`).join("");
+        document.querySelector(".fc-quick").dataset.filled = "1";
+      }
       // cold controls: lang / auto / clear / stat
       const q = (c) => document.querySelector("." + c);
       if (s.langShow != null) q("fc-lang").style.display = s.langShow ? "" : "none";   // ไทย/Eng เฉพาะ web STT
@@ -145,6 +158,12 @@
     document.querySelector(".fc-th").onclick = () => api.sendAction("th");
     document.querySelector(".fc-en").onclick = () => api.sendAction("en");
     document.querySelector(".fc-auto").onclick = () => api.sendAction("auto");
+
+    // quick + follow-up chips (delegation) → ถามต่อ
+    document.body.addEventListener("click", (e) => {
+      const c = e.target.closest(".chip-ask"); if (!c) return;
+      const t = c.getAttribute("data-ask"); if (t) api.sendAction("ask", t);
+    });
 
     // ── ความโปร่งของพื้นหลัง (CSS rgba alpha เท่านั้น — font/bubble ชัด 100%, ไม่หรี่ทั้งบาน) ──
     const setBgA = (v) => document.documentElement.style.setProperty("--ov-a", (v / 100).toFixed(2));
