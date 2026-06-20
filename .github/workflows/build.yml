@@ -1,0 +1,56 @@
+name: Build desktop installers
+
+# รัน: กดเอง (Actions → Run workflow) หรือ push tag v* (สร้าง GitHub Release ให้ด้วย)
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # ให้สร้าง Release + แนบไฟล์ติดตั้งได้ตอน push tag
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest   # → .exe (NSIS installer)
+          - os: macos-latest     # → .dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm install
+
+      - name: Build installer (electron-builder)
+        run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false   # ไม่มี cert → build แบบ unsigned (ข้ามการ sign)
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.blockmap
+            dist/latest*.yml
+          if-no-files-found: ignore
+
+      - name: Attach to GitHub Release (เฉพาะตอน push tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.blockmap
+            dist/latest*.yml
