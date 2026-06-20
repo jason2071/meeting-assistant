@@ -155,13 +155,15 @@ function setMicUI(){
 
 // ── Screen share ──
 const video=$("screenVideo");
-let screenStream=null;
+let screenStream=null, screenBusy=false;
 $("screenBtn").onclick=async()=>{
+  if(screenBusy) return;   // กันกดเบิ้ลระหว่าง getDisplayMedia ค้าง → picker ซ้อน
   if(screenOn){
     screenStream && screenStream.getTracks().forEach(t=>t.stop());
     screenStream=null; video.srcObject=null; screenOn=false;
     $("screenBtn").classList.remove("on"); $("screenBtn").textContent="🖥 แชร์จอ"; refreshStatus(); return;
   }
+  screenBusy=true; $("screenBtn").classList.add("on"); $("screenBtn").textContent="🖥 กำลังเลือก…";
   try{
     screenStream = await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
     video.srcObject = screenStream; await video.play();
@@ -169,7 +171,8 @@ $("screenBtn").onclick=async()=>{
       $("screenBtn").classList.remove("on"); $("screenBtn").textContent="🖥 แชร์จอ"; refreshStatus(); };
     screenOn=true; $("screenBtn").classList.add("on"); $("screenBtn").textContent="🖥 หยุดแชร์";
     showError(""); refreshStatus();
-  }catch(e){ showError("เริ่มแชร์จอไม่สำเร็จ หรือถูกยกเลิก"); }
+  }catch(e){ $("screenBtn").classList.remove("on"); $("screenBtn").textContent="🖥 แชร์จอ"; showError("เริ่มแชร์จอไม่สำเร็จ หรือถูกยกเลิก"); }
+  finally{ screenBusy=false; }
 };
 function captureFrame(){
   if(!video.videoWidth) return null;
