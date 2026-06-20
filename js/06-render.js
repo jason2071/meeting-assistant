@@ -144,29 +144,39 @@ function fmtCost(c){ c=c||0; return "$"+(c>=0.01 ? c.toFixed(2) : c.toFixed(4));
 function tokBadge(u){ let s=`↑ ${fmtTok(u&&u.in)} · ↓ ${fmtTok(u&&u.out)}`; if(u&&u.cost!=null) s+=` · ${fmtCost(u.cost)}`; return el("div","tok",s); }
 
 function renderEstimate(card, e){
-  const body=el("div");
-  if(e.summary) body.appendChild(el("div",null,esc(e.summary))).style.cssText="font-size:14px;margin-bottom:12px";
-  const time=el("div",null,"🕐 "+esc(e.totalTime||"")); time.style.cssText="color:var(--amber);font-weight:600;font-size:14px;margin-bottom:12px"; body.appendChild(time);
+  const body=el("div","est");
+  if(e.summary) body.appendChild(el("div","est-summary",esc(e.summary)));
+  if(e.totalTime){
+    const tot=el("div","est-total");
+    tot.appendChild(el("div","et-lbl","เวลารวมโดยประมาณ"));
+    tot.appendChild(el("div","et-val","🕐 "+esc(e.totalTime)));
+    body.appendChild(tot);
+  }
   if(e.stack?.length){
-    body.appendChild(el("div","lbl","STACK"));
-    const wrap=el("div"); wrap.style.cssText="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px";
-    e.stack.forEach(s=>wrap.appendChild(el("span","stack mono",esc(s)))); body.appendChild(wrap);
+    const sec=el("div","est-sec");
+    sec.appendChild(el("div","lbl","STACK"));
+    const wrap=el("div","est-stacks");
+    e.stack.forEach(s=>wrap.appendChild(el("span","stack mono",esc(s)))); sec.appendChild(wrap);
+    body.appendChild(sec);
   }
   if(e.breakdown?.length){
-    body.appendChild(el("div","lbl","BREAKDOWN"));
-    const list=el("div"); list.style.margin="6px 0 12px";
-    e.breakdown.forEach((b,i)=>{
-      const r=el("div"); r.style.cssText="display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:6px 0;"+(i?"border-top:1px solid var(--border)":"");
+    const sec=el("div","est-sec");
+    sec.appendChild(el("div","lbl","BREAKDOWN"));
+    const list=el("div","est-breakdown");
+    e.breakdown.forEach((b)=>{
+      const r=el("div","est-row");
       r.appendChild(el("span",null,esc(b.task)));
-      const t=el("span","mono",esc(b.time)); t.style.cssText="color:var(--muted);white-space:nowrap"; r.appendChild(t);
+      r.appendChild(el("span","er-time mono",esc(b.time)));
       list.appendChild(r);
     });
-    body.appendChild(list);
+    sec.appendChild(list); body.appendChild(sec);
   }
   if(e.risks?.length){
-    body.appendChild(el("div","lbl","⚠ ความเสี่ยง / ข้อควรระวัง"));
-    const ul=el("ul"); ul.style.cssText="margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted);line-height:1.6";
-    e.risks.forEach(r=>ul.appendChild(el("li",null,esc(r)))); body.appendChild(ul);
+    const sec=el("div","est-sec");
+    sec.appendChild(el("div","lbl","⚠ ความเสี่ยง / ข้อควรระวัง"));
+    const ul=el("ul","est-risks");
+    e.risks.forEach(r=>ul.appendChild(el("li",null,esc(r)))); sec.appendChild(ul);
+    body.appendChild(sec);
   }
   card.appendChild(body);
 }
