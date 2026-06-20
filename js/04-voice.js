@@ -25,6 +25,10 @@ $("autoBtn").onclick=()=>{ autoSend=!autoSend; $("autoBtn").classList.toggle("on
 function applyThinkUI(){ $("thinkBtn").classList.toggle("on",thinkOn); $("thinkBtn").textContent=thinkOn?"เปิด":"ปิด"; $("thinkBtn").setAttribute("aria-pressed",String(thinkOn)); }
 $("thinkBtn").onclick=()=>{ thinkOn=!thinkOn; store.set("ma_think", thinkOn?"1":"0"); applyThinkUI(); };
 applyThinkUI();
+// 💾 จำ key toggle (localStorage opt-in; default ปิด = sessionStorage)
+function applyRememberUI(){ const b=$("rememberBtn"); if(!b) return; b.classList.toggle("on",rememberKey); b.textContent=rememberKey?"เปิด":"ปิด"; b.setAttribute("aria-pressed",String(rememberKey)); }
+if($("rememberBtn")) $("rememberBtn").onclick=()=>{ setRememberKeys(!rememberKey); applyRememberUI(); };
+applyRememberUI();
 silenceInp.value = (silenceMs/1000).toFixed(1);
 silenceInp.onchange=()=>{
   let s=parseFloat(silenceInp.value); if(isNaN(s)) s=1.8; s=Math.min(6,Math.max(0.5,s));

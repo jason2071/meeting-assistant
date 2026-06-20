@@ -30,16 +30,28 @@ function idbGetAll(){   // → {id: session}
 function idbPut(s){ try{ if(_idb) _idbTx("readwrite").put(s).onerror=()=>console.warn("idbPut fail",s&&s.id); }catch(e){} }
 function idbDel(id){ try{ if(_idb) _idbTx("readwrite").delete(id); }catch(e){} }
 
-// API keys live in sessionStorage only — cleared when the tab closes
+// "จำ key" toggle (ma_remember, default off): off = sessionStorage only (ล้างเมื่อปิดแท็บ);
+// on = persist ลง localStorage ด้วย (จำข้ามแท็บ/รีสตาร์ท — ใช้บนเครื่องส่วนตัวเท่านั้น เพราะใครเปิด DevTools ก็อ่านได้)
+let rememberKey = store.get("ma_remember")==="1";
+// keys live in sessionStorage; เมื่อ rememberKey เปิด mirror ไป localStorage ด้วย
 const skey = {
-  get(k){ try { return sessionStorage.getItem(k); } catch { return null; } },
-  set(k,v){ try { sessionStorage.setItem(k,v); } catch {} },
+  get(k){ try { const s = sessionStorage.getItem(k); return s!==null ? s : localStorage.getItem(k); } catch { return null; } },
+  set(k,v){ try { sessionStorage.setItem(k,v); if(rememberKey) localStorage.setItem(k,v); else localStorage.removeItem(k); } catch {} },
 };
-// migrate a key previously persisted in localStorage into sessionStorage, then purge it
+const KEY_PROVIDERS = ["openrouter","gemini","openai","claude","soniox"];
+// toggle remember: on → copy current keys ลง localStorage; off → purge ออกจาก localStorage (เก็บใน session ต่อ)
+function setRememberKeys(on){
+  rememberKey = on;
+  store.set("ma_remember", on ? "1" : "0");
+  KEY_PROVIDERS.forEach(p=>{
+    const kk=keyKey(p), v=skey.get(kk); if(!v) return;
+    try{ sessionStorage.setItem(kk,v); }catch{}   // keep current tab working either way
+    if(on) store.set(kk,v); else store.remove(kk);
+  });
+}
 function getKey(p){
-  let k = skey.get(keyKey(p));
-  if(k===null){ const old = store.get(keyKey(p)); if(old){ skey.set(keyKey(p), old); store.remove(keyKey(p)); k = old; } }
-  // local-only fallback from config.local.js (window.__MA_KEYS__) — not persisted to sessionStorage
+  const k = skey.get(keyKey(p));
+  // local-only fallback from config.local.js (window.__MA_KEYS__) — not persisted
   if(!k){ const env = (window.__MA_KEYS__||{})[p]; if(env) return env; }
   return k || "";
 }

@@ -111,7 +111,12 @@
           <div class="sf">
             <div class="lbl">API KEY <span id="keyHint" class="settings-hint-inline"></span></div>
             <input id="apikey" type="password" style="width:100%" placeholder="วาง API key ที่นี่" autocomplete="off"
-              title="เก็บใน sessionStorage เท่านั้น — ล้างอัตโนมัติเมื่อปิดแท็บ ส่งตรงถึง provider" />
+              title="ส่งตรงถึง provider เท่านั้น — ไม่ถูกส่งไปที่อื่น" />
+          </div>
+          <div class="sf-row">
+            <span class="settings-label" title="เปิด = จำ key ไว้ในเครื่องนี้ (localStorage) เปิดแอปใหม่ไม่ต้องพิมพ์ซ้ำ · ปิด = เก็บแค่ในแท็บ ล้างเมื่อปิด (ปลอดภัยกว่าบนเครื่องที่ใช้ร่วมกัน)">💾 จำ key</span>
+            <button id="rememberBtn" type="button" class="pill" aria-pressed="false">ปิด</button>
+            <span class="settings-hint">จำในเครื่องนี้ · ใช้บนเครื่องส่วนตัวเท่านั้น</span>
           </div>
           <div class="sf-row">
             <span class="settings-label">🎙 ถอดเสียง</span>
@@ -138,13 +143,13 @@
             <div class="lbl">Gemini API key <span class="settings-hint-inline">· สด+AI (OpenRouter ไม่ต้องใช้)</span></div>
             <input id="geminiKey" type="password" autocomplete="off" style="width:100%"
               placeholder="วาง Gemini API key"
-              title="เก็บใน sessionStorage เท่านั้น — ล้างอัตโนมัติเมื่อปิดแท็บ" />
+              title="จำได้ถ้าเปิด 💾 จำ key ในตั้งค่า — ไม่งั้นล้างเมื่อปิดแท็บ" />
           </div>
           <div id="sonioxKeyRow" class="sf" style="display:none">
             <div class="lbl">Soniox API key <span class="settings-hint-inline">· Soniox สด</span></div>
             <input id="sonioxKey" type="password" autocomplete="off" style="width:100%"
               placeholder="วาง Soniox API key"
-              title="เก็บใน sessionStorage เท่านั้น — ล้างอัตโนมัติเมื่อปิดแท็บ" />
+              title="จำได้ถ้าเปิด 💾 จำ key ในตั้งค่า — ไม่งั้นล้างเมื่อปิดแท็บ" />
           </div>
         </div>
 
