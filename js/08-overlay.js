@@ -5,6 +5,7 @@
 
 const IS_ELECTRON = !!(window.electronAPI && window.electronAPI.isElectron);
 let floatObserver=null, floatSink=null, pipWin=null, elecOpen=false;
+let floatReadonly=false;   // true = ดู session เก่าอย่างเดียว (ซ่อน composer ในหน้าต่างลอย)
 
 // ── mirror logic (#results → sink: DOM ของ PiP หรือ push ผ่าน IPC) — coalesce ด้วย rAF ──
 function syncOverlay(){
@@ -26,6 +27,7 @@ function stopMirror(){
 
 // ── Electron: หน้าต่างลอยแยก (transparent — ความจางคุมด้วย CSS bg alpha ฝั่ง overlay.html) ──
 function openElectron(){
+  if(elecOpen){ if(floatSink) floatSink(results.innerHTML); syncFloatControls(); return; }  // เปิดอยู่แล้ว → repaint+sync (เช่น สลับ live↔readonly)
   electronAPI.openOverlay();
   elecOpen=true;
   // ไม่ eager push — overlay window จะส่ง "ready" กลับ แล้ว handler (ด้านล่าง) paint html+controls แรกเอง (กัน push หาย/ซ้ำ)
@@ -49,22 +51,30 @@ function copyStylesTo(win){
   });
 }
 async function openPip(){
+  if(pipWin && !pipWin.closed){ if(floatSink) floatSink(results.innerHTML); syncFloatControls(); return; }  // เปิดอยู่แล้ว → repaint+sync
   if(!("documentPictureInPicture" in window)){
     showError("เบราว์เซอร์นี้ไม่รองรับหน้าต่างลอย (Document PiP) — ใช้ Chrome/Edge 116+ หรือ desktop app");
     updateFloatBtn(); return;
   }
-  try{ pipWin = await documentPictureInPicture.requestWindow({width:360, height:480}); }
+  const pw=+store.get("ma_pip_w")||480, ph=+store.get("ma_pip_h")||640;   // จำขนาดที่ user ปรับ (default ใหญ่ขึ้น)
+  try{ pipWin = await documentPictureInPicture.requestWindow({width:pw, height:ph}); }
   catch(e){ return; }
+  let _pipRz; pipWin.addEventListener("resize",()=>{ clearTimeout(_pipRz); _pipRz=setTimeout(()=>{ if(pipWin&&!pipWin.closed){ store.set("ma_pip_w",pipWin.innerWidth); store.set("ma_pip_h",pipWin.innerHeight); } },300); });
   copyStylesTo(pipWin);
   const d=pipWin.document;
   d.body.className="pip-body";
-  const head=d.createElement("div"); head.className="pip-head"; head.textContent="🎤 Meeting Assistant";
+  const head=d.createElement("div"); head.className="pip-head";
+  head.innerHTML='<span class="pip-title">🎤 Meeting Assistant</span><span class="fc-stat mono"></span>';   // stat = ambient info ใน header
+  // secondary controls (screen/auto/lang); mic+stop ย้ายลงข้าง input (ergonomic)
+  const bar=d.createElement("div"); bar.className="fc-toolbar";
+  bar.innerHTML='<button class="fc-screen pill"></button><button class="fc-auto pill" title="ส่งอัตโนมัติหลังเงียบ">⚡</button><div class="seg fc-lang"><button class="fc-th">ไทย</button><button class="fc-en">Eng</button></div>';
   const wrap=d.createElement("div"); wrap.className="chat-msgs pip-msgs"; wrap.id="pipResults";
+  const note=d.createElement("div"); note.className="pip-ro-note"; note.textContent="🔒 ดูอย่างเดียว";
   const comp=d.createElement("div"); comp.className="float-composer";
-  comp.innerHTML='<button class="fc-mic mic"></button><button class="fc-stop pill stopbtn" style="display:none"></button><button class="fc-screen pill"></button><div class="fc-inputrow"><input class="fc-input" placeholder="พิมพ์คำถาม…" /><button class="fc-send send">➤</button></div>';
-  d.body.appendChild(head); d.body.appendChild(wrap); d.body.appendChild(comp);
+  comp.innerHTML='<div class="fc-inputrow"><button class="fc-mic mic"></button><button class="fc-stop pill stopbtn" style="display:none"></button><input class="fc-input" placeholder="พิมพ์คำถาม…" /><button class="fc-send send">➤</button></div>';
+  d.body.appendChild(head); d.body.appendChild(bar); d.body.appendChild(wrap); d.body.appendChild(note); d.body.appendChild(comp);
   startMirror((html)=>{ wrap.innerHTML=html; wrap.scrollTop=wrap.scrollHeight; });
-  wireFloatControls(comp); syncFloatControls();
+  wireFloatControls(d.body); syncFloatControls();
   pipWin.addEventListener("pagehide", ()=>{ stopMirror(); pipWin=null; updateFloatBtn(); });
   updateFloatBtn();
 }
@@ -93,12 +103,23 @@ function wireFloatControls(scope){
   const doSend=()=>{ const v=(input&&input.value||"").trim(); if(!v) return; input.value=""; submit(v); };
   if(send) send.onclick=doSend;
   if(input) input.addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); doSend(); } });
+  // cold controls (ย้ายมาจาก chat header) → proxy ไปปุ่มหลัก
+  const th=scope.querySelector(".fc-th"), en=scope.querySelector(".fc-en"), auto=scope.querySelector(".fc-auto");
+  if(th) th.onclick=()=>$("thBtn").click();
+  if(en) en.onclick=()=>$("enBtn").click();
+  if(auto) auto.onclick=()=>$("autoBtn").click();
 }
 // sync ปุ่มในแผง (label/สถานะ on/ซ่อน) ตามปุ่มหลัก — Electron push ผ่าน IPC; PiP เขียน DOM ตรง
 function syncFloatControls(){
+  const title=(curTitleEl&&curTitleEl.textContent)||"Meeting Assistant";
+  const modeLbl=($("curMode")&&$("curMode").textContent)||"";
+  const statTxt=((($("count")&&$("count").textContent)||"")+" "+(($("tok")&&$("tok").textContent)||"")).trim();
+  const langShow=(typeof sttEngine==="undefined") || sttEngine==="web";   // ไทย/Eng ใช้เฉพาะ Web Speech STT
   if(IS_ELECTRON){
     if(!elecOpen) return;
-    const st={};
+    const st={ readonly:floatReadonly, title, mode:modeLbl, stat:statTxt, langShow,
+      th:$("thBtn")&&$("thBtn").classList.contains("on"), en:$("enBtn")&&$("enBtn").classList.contains("on"),
+      auto:$("autoBtn")&&$("autoBtn").classList.contains("on") };
     [["mic","micBtn"],["stop","stopBtn"],["screen","screenBtn"]].forEach(([k,id])=>{
       const src=$(id); if(!src) return;
       st[k]={label:src.textContent, display:src.style.display, on:src.classList.contains("on")};
@@ -109,6 +130,8 @@ function syncFloatControls(){
   }
   if(!(pipWin && !pipWin.closed)) return;
   const s=pipWin.document.body;
+  s.classList.toggle("readonly", floatReadonly);   // readonly → CSS ซ่อน composer/toolbar + โชว์ note
+  const ttl=s.querySelector(".pip-title"); if(ttl) ttl.textContent=(modeLbl?modeLbl+" · ":"")+title;
   pipWin.document.documentElement.style.setProperty("--fs", document.documentElement.style.getPropertyValue("--fs")||"14px");  // ฟอนต์ตาม slider
   [["fc-mic","micBtn"],["fc-stop","stopBtn"],["fc-screen","screenBtn"]].forEach(([fc,id])=>{
     const el=s.querySelector("."+fc), src=$(id); if(!el||!src) return;
@@ -116,10 +139,16 @@ function syncFloatControls(){
     el.style.display=src.style.display;
     el.classList.toggle("on", src.classList.contains("on"));
   });
+  // cold controls sync
+  const langSeg=s.querySelector(".fc-lang"); if(langSeg) langSeg.style.display=langShow?"":"none";
+  const th=s.querySelector(".fc-th"); if(th&&$("thBtn")) th.classList.toggle("on",$("thBtn").classList.contains("on"));
+  const en=s.querySelector(".fc-en"); if(en&&$("enBtn")) en.classList.toggle("on",$("enBtn").classList.contains("on"));
+  const auto=s.querySelector(".fc-auto"); if(auto&&$("autoBtn")) auto.classList.toggle("on",$("autoBtn").classList.contains("on"));
+  const stat=s.querySelector(".fc-stat"); if(stat) stat.textContent=statTxt;
 }
 // ปุ่มหลักเปลี่ยน (label/class/ซ่อน) → sync แผงตาม (decoupled เหมือน mirror)
 const ctrlObserver=new MutationObserver(()=>syncFloatControls());
-["micBtn","stopBtn","screenBtn"].forEach(id=>ctrlObserver.observe($(id),{attributes:true,childList:true,characterData:true,subtree:true}));
+["micBtn","stopBtn","screenBtn","thBtn","enBtn","autoBtn","count","tok"].forEach(id=>{ const e=$(id); if(e) ctrlObserver.observe(e,{attributes:true,childList:true,characterData:true,subtree:true}); });
 
 // ── Electron: รับ action จากหน้าต่างลอย + sync state ตอน overlay พร้อม ──
 if(IS_ELECTRON){
@@ -130,6 +159,9 @@ if(IS_ELECTRON){
     else if(action==="stop") $("stopBtn").click();
     else if(action==="screen") $("screenBtn").click();
     else if(action==="send") submit(payload);
+    else if(action==="th") $("thBtn").click();
+    else if(action==="en") $("enBtn").click();
+    else if(action==="auto") $("autoBtn").click();
   });
   electronAPI.onOverlayClosed(()=>{ elecOpen=false; stopMirror(); updateFloatBtn(); });
 }

@@ -16,7 +16,8 @@
       font-family:Inter,system-ui,-apple-system,sans-serif; overflow:hidden; }
     .ov-head { -webkit-app-region: drag; display:flex; align-items:center; gap:8px; flex:none;
       padding:7px 10px; background:rgba(52,36,80,var(--ov-a,.72)); border-bottom:1px solid rgba(255,255,255,.16); user-select:none; }
-    .ov-title { font-size:12px; font-weight:700; color:#fff; flex:1; white-space:nowrap; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+    .ov-title { font-size:12px; font-weight:700; color:#fff; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+    .ov-head .fc-stat { flex:none; font-size:11px; color:#fff; opacity:.75; white-space:nowrap; text-shadow:0 1px 3px rgba(0,0,0,.6); }
     .ov-head .no-drag, .ov-head input { -webkit-app-region: no-drag; }
     .ov-op { width:70px; accent-color:#fff; }
     .ov-btn { width:26px; height:26px; padding:0; border:none; border-radius:6px; font-size:13px; cursor:pointer;
@@ -43,22 +44,45 @@
     #overlayResults pre, #overlayResults code, #overlayResults .codewrap { text-shadow:none; }
     /* control bar: พื้นม่วงดำโปร่งตาม --ov-a */
     .float-composer { background:rgba(52,36,80,var(--ov-a,.72)); }
+    /* readonly (ดู session เก่า): ซ่อน composer + โชว์ note */
+    #ovRoNote { display:none; flex:none; text-align:center; padding:9px 10px; font-size:12px; font-weight:600;
+      color:#fff; background:rgba(52,36,80,var(--ov-a,.72)); border-top:1px solid rgba(255,255,255,.16);
+      text-shadow:0 1px 3px rgba(0,0,0,.6); }
+    body.readonly .float-composer { display:none; }
+    body.readonly #ovRoNote { display:block; }
+    /* cold-control toolbar (ย้ายมาจาก chat header) */
+    .fc-toolbar { flex:none; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+      padding:6px 10px; background:rgba(52,36,80,var(--ov-a,.72)); border-bottom:1px solid rgba(255,255,255,.16); }
+    .fc-toolbar .seg { background:rgba(255,255,255,.12); border:none; }
+    .fc-toolbar .seg button { color:#fff; }
+    .fc-toolbar .seg button.on { background:#fff; color:#3a2a5e; }
+    .fc-toolbar .pill { background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18); color:#fff; padding:5px 9px; }
+    .fc-toolbar .pill.on { background:#fff; color:#3a2a5e; }
+    .fc-toolbar .iconbtn { background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18); color:#fff; width:30px; height:30px; }
+    .fc-toolbar .fc-stat { margin-left:auto; font-size:11px; color:#fff; opacity:.8; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+    body.readonly .fc-toolbar { display:none; }
   </style>
 </head>
 <body>
   <div class="ov-head">
-    <span class="ov-title">🎤 Meeting</span>
+    <span class="ov-title" id="ovTitle">🎤 Meeting</span>
+    <span class="fc-stat mono"></span>
     <input type="range" id="ovOpacity" class="ov-op no-drag" min="0" max="100" value="85" title="ความโปร่งของพื้นหลัง (font/bubble ชัดเสมอ)" />
     <button id="ovTop" class="ov-btn no-drag on" title="ลอยเหนือเสมอ (always-on-top)">📌</button>
     <button id="ovShield" class="ov-btn no-drag" title="ซ่อนจากการแชร์จอ/บันทึกหน้าจอ">🛡</button>
     <button id="ovClose" class="ov-btn no-drag" title="ปิด">✕</button>
   </div>
-  <div id="overlayResults" class="chat-msgs pip-msgs"></div>
-  <div class="float-composer">
-    <button class="fc-mic mic">🎤 เริ่มฟัง</button>
-    <button class="fc-stop pill stopbtn" style="display:none">✂️ ส่งเลย</button>
+  <div class="fc-toolbar">
     <button class="fc-screen pill">🖥 แชร์จอ</button>
+    <button class="fc-auto pill on" title="ส่งอัตโนมัติหลังเงียบ">⚡</button>
+    <div class="seg fc-lang"><button class="fc-th on">ไทย</button><button class="fc-en">Eng</button></div>
+  </div>
+  <div id="overlayResults" class="chat-msgs pip-msgs"></div>
+  <div id="ovRoNote">🔒 ดูอย่างเดียว</div>
+  <div class="float-composer">
     <div class="fc-inputrow">
+      <button class="fc-mic mic">🎤 เริ่มฟัง</button>
+      <button class="fc-stop pill stopbtn" style="display:none">✂️ ส่งเลย</button>
       <input class="fc-input" placeholder="พิมพ์คำถาม…" />
       <button class="fc-send send">➤</button>
     </div>
@@ -84,6 +108,15 @@
         el.classList.toggle("on", !!st.on);
       });
       if (s.fs) document.documentElement.style.setProperty("--fs", s.fs);   // ขนาดฟอนต์ตาม slider หน้าหลัก
+      document.body.classList.toggle("readonly", !!s.readonly);             // ดู session เก่า → ซ่อน composer/toolbar
+      if (s.title != null) $("ovTitle").textContent = (s.mode ? s.mode + " · " : "") + s.title;
+      // cold controls: lang / auto / clear / stat
+      const q = (c) => document.querySelector("." + c);
+      if (s.langShow != null) q("fc-lang").style.display = s.langShow ? "" : "none";   // ไทย/Eng เฉพาะ web STT
+      if (s.th != null) q("fc-th").classList.toggle("on", !!s.th);
+      if (s.en != null) q("fc-en").classList.toggle("on", !!s.en);
+      if (s.auto != null) q("fc-auto").classList.toggle("on", !!s.auto);
+      if (s.stat != null) q("fc-stat").textContent = s.stat;
     });
 
     // ── control bar → ส่ง action กลับ main ──
@@ -94,6 +127,11 @@
     const doSend = () => { const v = (input.value || "").trim(); if (!v) return; input.value = ""; api.sendAction("send", v); };
     document.querySelector(".fc-send").onclick = doSend;
     input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); } });
+
+    // ── cold-control toolbar → action กลับ main ──
+    document.querySelector(".fc-th").onclick = () => api.sendAction("th");
+    document.querySelector(".fc-en").onclick = () => api.sendAction("en");
+    document.querySelector(".fc-auto").onclick = () => api.sendAction("auto");
 
     // ── ความโปร่งของพื้นหลัง (CSS rgba alpha เท่านั้น — font/bubble ชัด 100%, ไม่หรี่ทั้งบาน) ──
     const setBgA = (v) => document.documentElement.style.setProperty("--ov-a", (v / 100).toFixed(2));

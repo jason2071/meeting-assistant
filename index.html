@@ -30,7 +30,7 @@
         <div class="lobby-head">
           <div>
             <h2 class="bg-gradient-to-r from-teal to-emerald-300 bg-clip-text text-transparent text-3xl font-extrabold" style="margin:0 0 4px">Meeting Assistant</h2>
-            <p style="color:var(--muted);font-size:14px;margin:0">เลือก model · ใส่ key · กดเริ่ม</p>
+            <p style="color:var(--muted);font-size:14px;margin:0">เลือก model · ใส่ key · กดเริ่ม — 🪟 แชทเปิดในหน้าต่างลอย</p>
           </div>
           <button id="settingsBtn" class="gear-btn" title="ตั้งค่า" aria-label="เปิดหน้าตั้งค่า">⚙</button>
         </div>
@@ -176,8 +176,8 @@
       <div id="resultsOld" class="chat-msgs"></div>
     </div>
 
-    <!-- ───── CURRENT: chat ───── -->
-    <div id="viewCurrent" class="chat-wrap">
+    <!-- ───── CURRENT: chat — headless engine (chat แสดงในหน้าต่างลอยเท่านั้น; เก็บ DOM ไว้เป็น mirror source + composer proxy) ───── -->
+    <div id="viewCurrent" class="chat-wrap" style="display:none">
       <header class="chat-head">
         <!-- left group: nav + identity -->
         <div class="chat-head-left">
