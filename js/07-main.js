@@ -13,10 +13,11 @@ async function submit(override){
   const key=keyInp.value.trim(), model=modelInp.value.trim();
   if(!key){ showError("ยังไม่ได้ใส่ API key — กลับไปตั้งค่าที่หน้าหลัก"); return; }
   busy=true; showError(""); $("input").value=""; finalText=""; clearVoicePreview(); $("sendBtn").classList.remove("ready");
+  const sess = (ensureSession(), curSess);   // ผูกคำตอบกับ session นี้ — สลับ session ระหว่างตอบ คำตอบไม่ข้าม
   const image = screenOn ? captureFrame() : null;
   // multi-turn: ประวัติ Q&A ก่อนหน้า (items มีแค่ turn เก่า — saveItem รันหลังตอบ); cap + gate ด้วย contextOn
   const MAX_TURNS=10;
-  const history=(contextOn ? ((curSess&&curSess.items)||[]).slice(-MAX_TURNS) : [])
+  const history=(contextOn ? ((sess&&sess.items)||[]).slice(-MAX_TURNS) : [])
     .flatMap(it=>[{role:"user",text:it.q},{role:"assistant",text:it.raw}]);
   addUserMsg(q, !!image);
 
@@ -26,7 +27,7 @@ async function submit(override){
       const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:4096,think:thinkOn,history});  // maxTokens สูงกัน thinking กิน budget; ความสั้นคุมด้วย prompt
       const full=await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); scrollBottom(); });
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
-      if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}); genFollowups(aiBubble, q, full); }
+      if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}, sess); genFollowups(aiBubble, q, full); }
     }catch(e){ ans.textContent=""; ans.appendChild(el("span","warn","⚠ "+esc(e.message))); }
   } else {
     const bubble=addAiMsg();
@@ -38,7 +39,7 @@ async function submit(override){
       if(!clean || clean==="{") throw new Error("AI ตอบว่าง/ไม่เป็น JSON (อาจถูกตัดหรือ model ไม่รองรับ json mode) — ลองใหม่ หรือเปลี่ยน model");
       const est=looseJSON(clean);
       load.remove(); renderEstimate(bubble,est); const tok=addCost(req.usageAcc); bubble.appendChild(tokBadge(tok)); scrollBottom();
-      saveItem({q, mode:"est", hadImage:!!image, raw:JSON.stringify(est), tok});
+      saveItem({q, mode:"est", hadImage:!!image, raw:JSON.stringify(est), tok}, sess);
     }catch(e){ load.textContent=""; load.appendChild(el("span","warn","⚠ "+esc(e.message))); }
   }
   busy=false; scrollBottom();
@@ -100,13 +101,14 @@ function newSession(){
   floatReadonly=false;                 // session ใหม่ = แก้ไขได้
   renderSessions(); showView("home"); openOverlay();   // chat อยู่ในหน้าต่างลอย — main window คง lobby
 }
-function saveItem(item){
-  ensureSession();
-  curSess.items.push(item);
-  curSess.updatedAt=Date.now(); curSess.provider=provider; curSess.model=modelInp.value; curSess.mode=mode;
-  if(!curSess.title){ curSess.title=(item.q||"").slice(0,48); setCurTitle(curSess.title); }
-  persistSess(curSess);
-  updateTokTotal(); renderSessions();
+function saveItem(item, sess){
+  sess = sess || (ensureSession(), curSess);
+  sess.items.push(item);
+  sess.updatedAt=Date.now(); sess.provider=provider; sess.model=modelInp.value; sess.mode=mode;
+  if(!sess.title){ sess.title=(item.q||"").slice(0,48); if(sess===curSess) setCurTitle(sess.title); }
+  persistSess(sess);
+  if(sess===curSess) updateTokTotal();   // header token รวม = ของ session ที่กำลังดู
+  renderSessions();
 }
 function deleteSession(id){
   if(!confirm("ลบ session นี้? ไม่สามารถกู้คืนได้")) return;

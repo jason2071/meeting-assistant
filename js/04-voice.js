@@ -351,7 +351,8 @@ function stopVad(){
 //   live: non-final tokens โชว์สดทันที, final tokens สะสม; endpoint = token {"text":"<end>"} → ส่ง utterance (hands-free)
 let sxWS=null, sxCtx=null, sxSrc=null, sxProc=null, sxGain=null, sxFinal="", sxReady=false;
 let sxPending="", sxSendTimer=null;   // debounce-merge: รวมท่อนที่ endpoint ตัดติดๆกัน (หยุดคิด) ส่งเป็นก้อนเดียวเมื่อเงียบจริง
-function sxMergeMs(){ return Math.max(silenceMs, 2500); }   // รอหลัง endpoint ก่อนส่ง — มีพูดต่อ=ยกเลิก รวมต่อ
+let sxStopping=false, sxRetry=0;       // reconnect: WS หลุดเอง (ไม่ใช่กดหยุด) → ต่อใหม่ ไม่ให้ "ฟังค้าง"
+function sxMergeMs(){ return Math.max(silenceMs, 1500); }   // รอหลัง endpoint ก่อนส่ง — มีพูดต่อ=ยกเลิก รวมต่อ
 async function toggleSonioxRecord(){
   if(recOn){ stopSoniox(); return; }
   const key=getKey("soniox");
@@ -360,21 +361,20 @@ async function toggleSonioxRecord(){
   catch(e){ showError(audioSrc==="system" ? (e.message||"เปิดเสียงระบบไม่สำเร็จ") : "ไมค์ถูกบล็อก — เปิดสิทธิ์แล้วลองใหม่"); return; }
   loadMics();
   showError(""); sxFinal=""; sxPending=""; clearTimeout(sxSendTimer); sxSendTimer=null; sxReady=false; hybridQ=[]; finalText="";
+  sxStopping=false; sxRetry=0;
   recOn=true; hybridRec=false;
-  try{
-    sxCtx=new (window.AudioContext||window.webkitAudioContext)();
-    sxSrc=sxCtx.createMediaStreamSource(audioStream);
-    sxProc=sxCtx.createScriptProcessor(4096,1,1);
-    sxGain=sxCtx.createGain(); sxGain.gain.value=0;   // กัน feedback (ScriptProcessor ต้องต่ออยู่ใน graph ถึงจะยิง onaudioprocess)
+  // เปิด/เปิดใหม่ WebSocket (handler เดิม) — แยกฟังก์ชันเพื่อ reconnect ตอนหลุด โดยไม่แตะ audio graph
+  function connectWS(){
+    sxReady=false;
     sxWS=new WebSocket("wss://stt-rt.soniox.com/transcribe-websocket");
     sxWS.binaryType="arraybuffer";
     sxWS.onopen=()=>{
-      sxReady=true;
+      sxReady=true; sxRetry=0;
       sxWS.send(JSON.stringify({
         api_key:key, model:"stt-rt-v5",
         audio_format:"pcm_s16le", sample_rate:Math.round(sxCtx.sampleRate), num_channels:1,
         language_hints:["th","en"], enable_language_identification:true,
-        enable_endpoint_detection:true, max_endpoint_delay_ms:3000, endpoint_sensitivity:-0.3   // ตัดช้าลง กันหั่นกลางประโยคตอนหยุดคิด
+        enable_endpoint_detection:true, max_endpoint_delay_ms:2000, endpoint_sensitivity:-0.3   // ตัดเร็วขึ้น แต่ยังกันหั่นกลางประโยคตอนหยุดคิด
       }));
     };
     sxWS.onmessage=(ev)=>{
@@ -393,7 +393,22 @@ async function toggleSonioxRecord(){
       const prev=((sxPending?sxPending+" ":"")+sxFinal+partial).trim();
       updateVoicePreview(prev?("🗣 "+prev):"(กำลังฟัง…)");
     };
-    sxWS.onerror=()=>{ showError("เชื่อมต่อ Soniox ไม่สำเร็จ — เช็ค key/เน็ต"); };
+    sxWS.onerror=()=>{};   // ปล่อยให้ onclose จัดการ (reconnect/แจ้ง)
+    // หลุดเอง (ไม่ใช่กดหยุด/error_code) → ต่อใหม่ คง sxFinal/sxPending ไว้ ไม่ให้ "ฟังค้างไม่ส่ง"
+    sxWS.onclose=()=>{
+      sxReady=false;
+      if(sxStopping || !recOn) return;
+      if(sxRetry++ >= 5){ showError("Soniox หลุดบ่อย — กดเริ่มฟังใหม่"); stopSoniox(); return; }
+      showError("Soniox หลุด — กำลังต่อใหม่…");
+      setTimeout(()=>{ if(recOn && !sxStopping) connectWS(); }, 500);
+    };
+  }
+  try{
+    sxCtx=new (window.AudioContext||window.webkitAudioContext)();
+    sxSrc=sxCtx.createMediaStreamSource(audioStream);
+    sxProc=sxCtx.createScriptProcessor(4096,1,1);
+    sxGain=sxCtx.createGain(); sxGain.gain.value=0;   // กัน feedback (ScriptProcessor ต้องต่ออยู่ใน graph ถึงจะยิง onaudioprocess)
+    connectWS();
     sxProc.onaudioprocess=(e)=>{
       if(!sxReady || !sxWS || sxWS.readyState!==1) return;
       const f=e.inputBuffer.getChannelData(0);
@@ -416,7 +431,7 @@ function sxCommit(){
 // กด ✂️ ส่งเลย / หยุด → ส่งทุกอย่างที่ถอดได้ทันที (ไม่รอ debounce)
 function sonioxFlush(){ sxCommit(); }
 function stopSoniox(){
-  recOn=false;
+  recOn=false; sxStopping=true; sxRetry=0;   // กดหยุด/error → ห้าม reconnect
   sonioxFlush();   // ส่งเศษสุดท้าย
   try{ if(sxProc) sxProc.onaudioprocess=null; sxProc&&sxProc.disconnect(); }catch{}
   try{ sxGain&&sxGain.disconnect(); }catch{}
