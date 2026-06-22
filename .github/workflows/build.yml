@@ -28,8 +28,10 @@ jobs:
       - name: Install deps
         run: npm install
 
+      # publish ตอน push tag (electron-builder อ่าน GH_TOKEN → สร้าง Release + แนบไฟล์เอง
+      # ชื่อตาม artifactName เดียว ไม่ซ้ำ); dispatch (ไม่มี tag) → --publish never (แค่ build)
       - name: Build installer (electron-builder)
-        run: npm run dist
+        run: npm run dist -- --publish ${{ startsWith(github.ref, 'refs/tags/') && 'always' || 'never' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false   # ไม่มี cert → build แบบ unsigned (ข้ามการ sign)
@@ -44,13 +46,3 @@ jobs:
             dist/*.blockmap
             dist/latest*.yml
           if-no-files-found: ignore
-
-      - name: Attach to GitHub Release (เฉพาะตอน push tag)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.blockmap
-            dist/latest*.yml
