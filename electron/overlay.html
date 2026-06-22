@@ -29,6 +29,8 @@
     #overlayResults .msg { margin-bottom:14px; max-width:100%; }
     #overlayResults .bubble { background:transparent !important; border:none !important; padding:2px 0; }
     #overlayResults .msg.ai .bubble, #overlayResults .ans { color:#fff; }
+    /* bold (.ans strong) เดิม = var(--text) ซึ่ง scope นี้เป็นสีเข้ม → ดำบนพื้นมืด; เปลี่ยนเป็นส้มให้เด่น */
+    #overlayResults strong { color:#FFA94D; }
     #overlayResults .role, #overlayResults .ans, #overlayResults .bubble {
       text-shadow:0 1px 3px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.7); }
     /* role label เด่น: ใหญ่+หนา, AI=teal / ผู้ถาม=ขาว */
