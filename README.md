@@ -46,6 +46,26 @@ python3 -m http.server 8000
 2. เลือกโหมด **🧠 ถาม AI** / **📊 ประเมินงาน** บนหน้าหลัก **ก่อนกดเริ่ม** — โหมดล็อกต่อ session (อยากเปลี่ยนโหมด = กลับหน้าหลักเริ่ม session ใหม่; ไม่มี tab สลับในแชท). header ในแชทมี badge บอกโหมดปัจจุบัน
 3. พิมพ์ หรือกด 🎤 เริ่มฟัง / 🖥 แชร์จอ แล้วถามได้เลย (`⌘/Ctrl + Enter` เพื่อส่ง) — เสียงที่ถอดโชว์เป็น bubble สดในแชท
 
+## Desktop app (Electron)
+
+แอปเดสก์ท็อปแบบ wrapper — หน้าต่างลอย always-on-top จริง (ซ่อนจากแชร์จอได้). dev:
+
+```bash
+npm install
+npm start          # dev
+npm run dist       # build .dmg/.app (macOS) / installer (Windows)
+```
+
+### macOS เปิดไม่ได้ — ขึ้น "is damaged and can't be opened"
+
+ไม่ใช่แอปเสีย — แอปยังไม่ได้ code-sign + notarize กับ Apple → macOS Gatekeeper ติด quarantine flag. แก้ด้วยลบ flag ออก (ทำครั้งเดียว):
+
+```bash
+sudo xattr -rd com.apple.quarantine "/Applications/Meeting Assistant.app"
+```
+
+ใส่รหัสเครื่อง (ตอนพิมพ์จะไม่เห็นตัวอักษร — ปกติ) → Enter → เปิดแอปได้เลย
+
 ## ถอดเสียงประชุม (system audio) — macOS + BlackHole
 
 `SpeechRecognition` ฟังจาก **mic เท่านั้น** — เสียงคนอื่นในประชุม (ออกลำโพง/ผ่าน Zoom·Meet·Teams) ไม่เข้า mic. แก้ด้วยการ route เสียงระบบ → mic เสมือนด้วย [BlackHole](https://github.com/ExistentialAudio/BlackHole) (virtual audio driver ฟรี) แล้วแอปจะถอดเสียงประชุมเหมือนพูดเอง — ใช้ได้กับทุกแอป รวม Zoom native

@@ -69,7 +69,7 @@ async function openPip(){
   head.innerHTML='<span class="pip-title">🎤 Meeting Assistant</span><span class="fc-stat mono"></span>';   // stat = ambient info ใน header
   // secondary controls (screen/auto/lang); mic+stop ย้ายลงข้าง input (ergonomic)
   const bar=d.createElement("div"); bar.className="fc-toolbar";
-  bar.innerHTML='<button class="fc-screen pill"></button><button class="fc-auto pill" title="ส่งอัตโนมัติหลังเงียบ">⚡</button><div class="seg fc-lang"><button class="fc-th">ไทย</button><button class="fc-en">Eng</button></div>';
+  bar.innerHTML='<button class="fc-screen pill"></button><button class="fc-auto pill" title="ส่งอัตโนมัติหลังเงียบ">⚡</button><div class="seg fc-lang"><button class="fc-th">ไทย</button><button class="fc-en">Eng</button></div><button class="fc-clear iconbtn" title="ล้างแชท" style="margin-left:auto">🗑</button>';
   const wrap=d.createElement("div"); wrap.className="chat-msgs pip-msgs"; wrap.id="pipResults";
   const note=d.createElement("div"); note.className="pip-ro-note"; note.textContent="🔒 ดูอย่างเดียว";
   const stEl=d.createElement("div"); stEl.className="pip-status"; stEl.style.display="none";   // สถานะ (กำลังฟัง/เห็นจอ)
@@ -114,6 +114,8 @@ function wireFloatControls(scope){
   if(th) th.onclick=()=>$("thBtn").click();
   if(en) en.onclick=()=>$("enBtn").click();
   if(auto) auto.onclick=()=>$("autoBtn").click();
+  const clear=scope.querySelector(".fc-clear");
+  if(clear) clear.onclick=()=>{ if((scope.ownerDocument.defaultView||window).confirm("ล้างแชททั้งหมด?")) $("clear").click(); };
 }
 // sync ปุ่มในแผง (label/สถานะ on/ซ่อน) ตามปุ่มหลัก — Electron push ผ่าน IPC; PiP เขียน DOM ตรง
 function syncFloatControls(){
@@ -174,6 +176,7 @@ if(IS_ELECTRON){
     else if(action==="th") $("thBtn").click();
     else if(action==="en") $("enBtn").click();
     else if(action==="auto") $("autoBtn").click();
+    else if(action==="clear") $("clear").click();   // ล้างแชท (confirm ฝั่ง overlay แล้ว)
     else if(action==="ask") submit(payload);   // quick/follow-up chip จากหน้าต่างลอย
   });
   electronAPI.onOverlayClosed(()=>{ elecOpen=false; stopMirror(); updateFloatBtn(); });

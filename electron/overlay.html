@@ -91,6 +91,7 @@
     <button class="fc-screen pill">🖥 แชร์จอ</button>
     <button class="fc-auto pill on" title="ส่งอัตโนมัติหลังเงียบ">⚡</button>
     <div class="seg fc-lang"><button class="fc-th on">ไทย</button><button class="fc-en">Eng</button></div>
+    <button class="fc-clear iconbtn" title="ล้างแชท" style="margin-left:auto">🗑</button>
   </div>
   <div id="overlayResults" class="chat-msgs pip-msgs"></div>
   <div id="ovRoNote">🔒 ดูอย่างเดียว</div>
@@ -160,6 +161,7 @@
     document.querySelector(".fc-th").onclick = () => api.sendAction("th");
     document.querySelector(".fc-en").onclick = () => api.sendAction("en");
     document.querySelector(".fc-auto").onclick = () => api.sendAction("auto");
+    document.querySelector(".fc-clear").onclick = () => { if (confirm("ล้างแชททั้งหมด?")) api.sendAction("clear"); };
 
     // quick + follow-up chips (delegation) → ถามต่อ
     document.body.addEventListener("click", (e) => {
