@@ -1,18 +1,6 @@
 // 02-state.js — storage (store/skey/getKey) + state + DOM refs ($) + settings/model-select helpers + loadProvider
 // (classic script; loaded in numeric order — top-level globals shared across files)
 
-// ── PERF: timing log หา bottleneck ของ pipeline เสียง→LLM (ชั่วคราว ปิดได้ที่ PERF=false) ──
-// เปิด DevTools console → จะเห็น [perf] <stage> +<delta>ms ทุกช่วง
-const PERF = true;
-function plog(label){
-  if(!PERF) return;
-  const n = performance.now();
-  const d = plog._last ? " +" + Math.round(n - plog._last) + "ms" : "";
-  console.log("%c[perf]", "color:#e07b39;font-weight:700", label + d);
-  plog._last = n;
-}
-function plogReset(label){ plog._last = 0; plog(label); }
-
 // ── Storage helpers ──
 const store = {
   get(k){ try { return localStorage.getItem(k); } catch { return null; } },
@@ -85,7 +73,6 @@ let busy = false;
 let silenceMs = +store.get("ma_silence") || 1800;  // auto-send delay after silence (ปรับได้, default ถามสด)
 let thinkOn = store.get("ma_think")==="1";  // ให้ model คิดก่อนตอบ (thinking/reasoning) — default ปิด (เร็ว+ไม่กิน token)
 let contextOn = store.get("ma_context")!=="0";  // ส่งประวัติบทสนทนา (multi-turn) — default เปิด; ปิด = ถามเดี่ยวประหยัด token
-let followupOn = false;  // AI แนะนำคำถามต่อ (follow-up chips) — ปิดถาวร (เอา feature ออก)
 // quick-ask presets — เอาออกแล้ว (ว่าง = ไม่มี chip โผล่)
 const QUICKASKS = [];
 

@@ -29,10 +29,6 @@ applyThinkUI();
 function applyContextUI(){ const b=$("contextBtn"); if(!b) return; b.classList.toggle("on",contextOn); b.textContent=contextOn?"เปิด":"ปิด"; b.setAttribute("aria-pressed",String(contextOn)); }
 if($("contextBtn")) $("contextBtn").onclick=()=>{ contextOn=!contextOn; store.set("ma_context", contextOn?"1":"0"); applyContextUI(); };
 applyContextUI();
-// 💡 follow-up suggestions toggle (default เปิด)
-function applyFollowupUI(){ const b=$("followupBtn"); if(!b) return; b.classList.toggle("on",followupOn); b.textContent=followupOn?"เปิด":"ปิด"; b.setAttribute("aria-pressed",String(followupOn)); }
-if($("followupBtn")) $("followupBtn").onclick=()=>{ followupOn=!followupOn; store.set("ma_followup", followupOn?"1":"0"); applyFollowupUI(); };
-applyFollowupUI();
 // 💾 จำ key toggle (localStorage opt-in; default ปิด = sessionStorage)
 function applyRememberUI(){ const b=$("rememberBtn"); if(!b) return; b.classList.toggle("on",rememberKey); b.textContent=rememberKey?"เปิด":"ปิด"; b.setAttribute("aria-pressed",String(rememberKey)); }
 if($("rememberBtn")) $("rememberBtn").onclick=()=>{ setRememberKeys(!rememberKey); applyRememberUI(); };
@@ -396,13 +392,12 @@ async function toggleSonioxRecord(){
       for(const tk of (res.tokens||[])){
         if(tk.text==="<end>" || tk.text==="<fin>"){   // endpoint (เงียบ) → micro-debounce 350ms กัน <end> ถี่ตอน micro-pause (abort storm)
           if(sxFinal.trim()){ sxPending=(sxPending?sxPending+" ":"")+sxFinal.trim(); sxFinal=""; }
-          plogReset("① soniox <end> → debounce "+SX_SEND_DELAY+"ms");
           clearTimeout(sxSendTimer); sxSendTimer=setTimeout(sxCommit, SX_SEND_DELAY);
           continue;
         }
         // มี token จริง = ยังพูดอยู่:
         clearTimeout(sxSendTimer); sxSendTimer=null;   // (ก) ยังไม่ส่ง → ยกเลิก timer ที่ค้าง (coalesce ฟรี ไม่ต้อง abort)
-        if(voiceAbort && busy){ plog("✂ พูดต่อหลังส่ง → abort + merge"); voiceAbort.abort(); sxPending=voiceLastSent+(sxPending?" "+sxPending:""); voiceAbort=null; voiceLastSent=""; }   // (ข) ส่งไปแล้ว (pause>350ms) → abort
+        if(voiceAbort && busy){ voiceAbort.abort(); sxPending=voiceLastSent+(sxPending?" "+sxPending:""); voiceAbort=null; voiceLastSent=""; }   // (ข) ส่งไปแล้ว (pause>350ms) → abort + เอา text เดิม merge รอบหน้า
         if(tk.is_final) sxFinal+=tk.text; else partial+=tk.text;
       }
       const prev=((sxPending?sxPending+" ":"")+sxFinal+partial).trim();
@@ -445,7 +440,7 @@ function sxCommit(manual){
   // กด ส่งเลย ตอนมีคำตอบ auto ค้างอยู่ → ยกเลิก abort tracking ของตัวนั้น (ไม่ให้พูดต่อไป abort คำตอบที่เพิ่งกดส่ง)
   if(manual && voiceAbort){ voiceAbort=null; voiceLastSent=""; }
   clearVoicePreview();
-  if(txt){ plog("② commit → push submit"+(manual?" (manual)":"")); hybridQ.push(manual?{text:txt,manual:true}:txt); _drainHybridQ(); }
+  if(txt){ hybridQ.push(manual?{text:txt,manual:true}:txt); _drainHybridQ(); }
 }
 // กด ✂️ ส่งเลย → ส่งทันที แบบ authoritative (ไม่ถูก abort ถ้าพูดต่อ)
 function sonioxFlush(){ sxCommit(true); }
