@@ -105,6 +105,7 @@
   </div>
   <div class="fc-toolbar">
     <button class="fc-screen pill">🖥 แชร์จอ</button>
+    <button class="fc-img pill" title="ถามจากภาพจอที่แชร์ (ไม่ต้องพูด/พิมพ์)">📷 ถามภาพ</button>
     <button class="fc-auto pill on" title="ส่งอัตโนมัติหลังเงียบ">⚡</button>
     <div class="seg fc-lang"><button class="fc-th on">ไทย</button><button class="fc-en">Eng</button></div>
     <button class="fc-clear iconbtn" title="ล้างแชท" style="margin-left:auto">🗑</button>
@@ -174,6 +175,7 @@
     document.querySelector(".fc-mic").onclick = () => api.sendAction("mic");
     document.querySelector(".fc-stop").onclick = () => api.sendAction("stop");
     document.querySelector(".fc-screen").onclick = () => api.sendAction("screen");
+    document.querySelector(".fc-img").onclick = () => api.sendAction("askImage");
     const input = document.querySelector(".fc-input");
     const doSend = () => { const v = (input.value || "").trim(); if (!v) return; input.value = ""; api.sendAction("send", v); };
     document.querySelector(".fc-send").onclick = doSend;

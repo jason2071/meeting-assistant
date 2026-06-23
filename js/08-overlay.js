@@ -69,7 +69,7 @@ async function openPip(){
   head.innerHTML='<span class="pip-title">🎤 Meeting Assistant</span><span class="fc-stat mono"></span>';   // stat = ambient info ใน header
   // secondary controls (screen/auto/lang); mic+stop ย้ายลงข้าง input (ergonomic)
   const bar=d.createElement("div"); bar.className="fc-toolbar";
-  bar.innerHTML='<button class="fc-screen pill"></button><button class="fc-auto pill" title="ส่งอัตโนมัติหลังเงียบ">⚡</button><div class="seg fc-lang"><button class="fc-th">ไทย</button><button class="fc-en">Eng</button></div><button class="fc-clear iconbtn" title="ล้างแชท" style="margin-left:auto">🗑</button>';
+  bar.innerHTML='<button class="fc-screen pill"></button><button class="fc-img pill" title="ถามจากภาพจอที่แชร์ (ไม่ต้องพูด/พิมพ์)">📷 ถามภาพ</button><button class="fc-auto pill" title="ส่งอัตโนมัติหลังเงียบ">⚡</button><div class="seg fc-lang"><button class="fc-th">ไทย</button><button class="fc-en">Eng</button></div><button class="fc-clear iconbtn" title="ล้างแชท" style="margin-left:auto">🗑</button>';
   const wrap=d.createElement("div"); wrap.className="chat-msgs pip-msgs"; wrap.id="pipResults";
   const note=d.createElement("div"); note.className="pip-ro-note"; note.textContent="🔒 ดูอย่างเดียว";
   const stEl=d.createElement("div"); stEl.className="pip-status"; stEl.style.display="none";   // สถานะ (กำลังฟัง/เห็นจอ)
@@ -121,6 +121,7 @@ function wireFloatControls(scope){
   if(mic) mic.onclick=()=>$("micBtn").click();
   if(stop) stop.onclick=()=>$("stopBtn").click();
   if(screen) screen.onclick=()=>$("screenBtn").click();
+  const img=scope.querySelector(".fc-img"); if(img) img.onclick=()=>askImageOnly();   // 📷 ถามจากภาพจอ
   const doSend=()=>{ const v=(input&&input.value||"").trim(); if(!v) return; input.value=""; submit(v); };
   if(send) send.onclick=doSend;
   if(input) input.addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); doSend(); } });
@@ -187,6 +188,7 @@ if(IS_ELECTRON){
     if(action==="mic") $("micBtn").click();
     else if(action==="stop") $("stopBtn").click();
     else if(action==="screen") $("screenBtn").click();
+    else if(action==="askImage") askImageOnly();   // 📷 ถามจากภาพจอ
     else if(action==="send") submit(payload);
     else if(action==="th") $("thBtn").click();
     else if(action==="en") $("enBtn").click();

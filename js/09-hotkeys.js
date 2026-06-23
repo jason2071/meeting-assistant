@@ -8,6 +8,7 @@ const HK_ACTIONS = [
   { key:"send",   label:"✂️ ส่งเลย",         btn:"stopBtn" },   // one-shot (ส่งทันทีระหว่างฟัง)
   { key:"screen", label:"🖥 แชร์/หยุดจอ",   btn:"screenBtn" },  // toggle
   { key:"auto",   label:"⚡ เปิด/ปิดออโต้ส่ง", btn:"autoBtn" },  // toggle
+  { key:"img",    label:"📷 ถามจากภาพจอ",     btn:"imgBtn" },   // one-shot (capture frame ส่งถาม)
 ];
 const HK_MOD_CODES = ["ControlLeft","ControlRight","AltLeft","AltRight","ShiftLeft","ShiftRight","MetaLeft","MetaRight"];
 function hkKey(a){ return "ma_hk_"+a; }

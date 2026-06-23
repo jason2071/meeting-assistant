@@ -13,8 +13,10 @@ function removeMsgPair(userMsg, aiBubble){
   bumpCount(); scrollBottom();
 }
 async function submit(override, opts={}){
+  const imageOnly=!!opts.imageOnly;   // ถามจากภาพล้วน: ใช้ IMG_PROMPT แทนข้อความผู้ใช้, bubble โชว์แค่ป้ายภาพ
   // เสียง qa/est อยู่ใน finalText (ไม่ใช่ textarea) → ถ้าพิมพ์ใช้ค่าจาก textarea ก่อน ไม่งั้น fallback เสียง
-  const q=(override!=null ? override : ($("input").value.trim() || finalText)).trim();
+  let q=(override!=null ? override : ($("input").value.trim() || finalText)).trim();
+  if(imageOnly) q=IMG_PROMPT;
   if(!q||busy) return;
   const signal=opts.signal;
   const key=keyInp.value.trim(), model=modelInp.value.trim();
@@ -22,11 +24,13 @@ async function submit(override, opts={}){
   busy=true; showError(""); $("input").value=""; finalText=""; clearVoicePreview(); $("sendBtn").classList.remove("ready");
   const sess = (ensureSession(), curSess);   // ผูกคำตอบกับ session นี้ — สลับ session ระหว่างตอบ คำตอบไม่ข้าม
   const image = screenOn ? captureFrame() : null;
+  if(imageOnly && !image){ busy=false; showError("เปิดแชร์จอก่อน แล้วกด 📷 ถามจากภาพ"); return; }   // ไม่มีภาพ = ไม่ส่งเปล่า
+  const displayQ = imageOnly ? "🖼 ถามจากภาพจอ" : q;   // ข้อความที่โชว์/เก็บใน session (ไม่ใช่ IMG_PROMPT ยาว)
   // multi-turn: ประวัติ Q&A ก่อนหน้า (items มีแค่ turn เก่า — saveItem รันหลังตอบ); cap + gate ด้วย contextOn
   const MAX_TURNS=4;   // ลดจาก 10 → input เล็กลง TTFB เร็วขึ้น (จำ 4 คู่ Q&A ล่าสุด)
   const history=(contextOn ? ((sess&&sess.items)||[]).slice(-MAX_TURNS) : [])
     .flatMap(it=>[{role:"user",text:it.q},{role:"assistant",text:it.raw}]);
-  const userMsg=addUserMsg(q, !!image);
+  const userMsg=addUserMsg(displayQ, !!image);
 
   if(mode==="qa"){
     const aiBubble=addAiMsg(); const ans=el("div","ans","▍"); aiBubble.appendChild(ans);
@@ -34,7 +38,7 @@ async function submit(override, opts={}){
       const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:4096,think:thinkOn,history});  // maxTokens สูงกัน thinking กิน budget; ความสั้นคุมด้วย prompt
       const full=await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); scrollBottom(); }, signal);
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
-      if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}, sess); }
+      if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q:displayQ, mode:"qa", hadImage:!!image, raw:full, tok}, sess); }
     }catch(e){
       if(e.name==="AbortError"){ removeMsgPair(userMsg, aiBubble); }   // เสียงพูดต่อ → คำตอบนี้ถูกแทน ลบทิ้งเงียบๆ
       else { ans.textContent=""; ans.appendChild(el("span","warn","⚠ "+esc(e.message))); }
@@ -49,7 +53,7 @@ async function submit(override, opts={}){
       if(!clean || clean==="{") throw new Error("AI ตอบว่าง/ไม่เป็น JSON (อาจถูกตัดหรือ model ไม่รองรับ json mode) — ลองใหม่ หรือเปลี่ยน model");
       const est=looseJSON(clean);
       load.remove(); renderEstimate(bubble,est); const tok=addCost(req.usageAcc); bubble.appendChild(tokBadge(tok)); scrollBottom();
-      saveItem({q, mode:"est", hadImage:!!image, raw:JSON.stringify(est), tok}, sess);
+      saveItem({q:displayQ, mode:"est", hadImage:!!image, raw:JSON.stringify(est), tok}, sess);
     }catch(e){
       if(e.name==="AbortError"){ removeMsgPair(userMsg, bubble); }
       else { load.textContent=""; load.appendChild(el("span","warn","⚠ "+esc(e.message))); }
@@ -57,6 +61,13 @@ async function submit(override, opts={}){
   }
   busy=false; scrollBottom();
 }
+
+// 📷 ถามจากภาพจอที่แชร์ (ไม่มีข้อความ/เสียง) — capture frame ปัจจุบัน ส่งให้ AI ตอบ
+function askImageOnly(){
+  if(!screenOn){ showError("เปิดแชร์จอก่อน แล้วกด 📷 ถามจากภาพ"); return; }
+  submit(null, {imageOnly:true});
+}
+$("imgBtn").onclick=askImageOnly;   // headless button (hotkey proxy ผ่าน .click())
 
 refreshStatus();
 
