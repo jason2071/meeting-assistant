@@ -38,6 +38,18 @@ function modelsReq(p, key){
       .sort((a,b)=>a.id.localeCompare(b.id)),
   };
 }
+// pre-warm: ยิง GET /models (token-free) เพื่อ warm TLS connection ไป host ของ provider
+// (chat host = models host เดียวกันทุก provider → POST chat รอบจริง reuse connection → TTFB ~0.5s แทน ~1.1s)
+// เรียกตอนเปิดแชท + เป็นระยะตอนฟัง (js/08) กัน connection idle หลุดระหว่าง utterance
+function prewarmConn(){
+  try{
+    const key=(typeof keyInp!=="undefined" && keyInp.value.trim())||"x";   // 401 ก็ warm connection ได้ ไม่ต้องสน response
+    const req=modelsReq(provider, key);
+    fetch(req.url,{method:"GET",headers:req.headers})
+      .then(r=>{ try{ r.body && r.body.cancel && r.body.cancel(); }catch{} })
+      .catch(()=>{});
+  }catch{}
+}
 async function fetchModels(){
   const key = keyInp.value.trim();
   if(!key && provider!=="openrouter"){ showError("ใส่ API key ก่อน fetch model"); return; }

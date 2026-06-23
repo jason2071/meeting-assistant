@@ -46,10 +46,22 @@
     #overlayResults pre, #overlayResults code, #overlayResults .codewrap { text-shadow:none; }
     /* inline code chip บนพื้นมืด: เหลืองอ่านง่าย + เอา bg/border ออก (ไม่ทึบ) */
     #overlayResults code { color:#ffd43b; background:none; border:none; padding:0; }
-    /* code block ใหญ่ยังคงพื้นเดิม + ตัวอักษรขาว (ไม่ให้เหลืองทั้งบล็อก) */
-    #overlayResults pre code, #overlayResults .codeblock code { color:#fff; background:none; }
+    /* code block ใหญ่: บังคับพื้นมืดคงที่ + base สว่าง (styles.css ใช้ var theme → contrast พังบน overlay) */
+    #overlayResults .codeblock, #overlayResults pre { background:#1e1b2e !important; border-color:rgba(255,255,255,.14) !important; }
+    #overlayResults .codebar { background:rgba(255,255,255,.06) !important; color:#cbd5e1 !important; }
+    #overlayResults .codecopy { color:#cbd5e1 !important; border-color:rgba(255,255,255,.22) !important; }
+    #overlayResults pre code, #overlayResults .codeblock code { color:#e6edf3 !important; background:none; }
+    /* syntax highlight token: สีสดอ่านง่ายบนพื้นมืด (override สีเข้มของ light theme) */
+    #overlayResults .hl-kw  { color:#C792EA !important; }
+    #overlayResults .hl-str { color:#C3E88D !important; }
+    #overlayResults .hl-num { color:#F78C6C !important; }
+    #overlayResults .hl-fn  { color:#82AAFF !important; }
+    #overlayResults .hl-com { color:#9AA5B1 !important; }
     /* control bar: พื้นม่วงดำโปร่งตาม --ov-a */
     .float-composer { background:rgba(52,36,80,var(--ov-a,.72)); }
+    /* input บนพื้นมืด: ตัวอักษรขาว (styles.css ใช้ var(--text) ของ light theme = ดำ → มองไม่เห็น) */
+    .float-composer .fc-input { color:#fff; }
+    .float-composer .fc-input::placeholder { color:rgba(255,255,255,.5); }
     /* readonly (ดู session เก่า): ซ่อน composer + โชว์ note */
     #ovRoNote { display:none; flex:none; text-align:center; padding:9px 10px; font-size:12px; font-weight:600;
       color:#fff; background:rgba(52,36,80,var(--ov-a,.72)); border-top:1px solid rgba(255,255,255,.16);
@@ -120,7 +132,13 @@
     // ── mirror คำตอบจาก main ──
     const results = $("overlayResults");
     const EMPTY_HINT = '<div class="float-empty">พิมพ์หรือพูดคำถามด้านล่างเพื่อเริ่ม</div>';
-    api.onOverlayHTML((html) => { results.innerHTML = html || EMPTY_HINT; results.scrollTop = results.scrollHeight; });
+    // sticky-bottom: เด้งลงล่างเฉพาะตอนผู้ใช้อยู่ล่างอยู่แล้ว — scroll ขึ้นอ่านย้อน = คงตำแหน่งไว้ (ไม่เด้ง)
+    api.onOverlayHTML((html) => {
+      const atBottom = results.scrollHeight - results.scrollTop - results.clientHeight < 60;
+      const prevTop = results.scrollTop;
+      results.innerHTML = html || EMPTY_HINT;
+      results.scrollTop = atBottom ? results.scrollHeight : prevTop;
+    });
 
     // ── sync ปุ่ม control (label/display/on) จาก main ──
     api.onOverlayControls((s) => {

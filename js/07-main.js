@@ -17,7 +17,7 @@ async function submit(override){
   const sess = (ensureSession(), curSess);   // ผูกคำตอบกับ session นี้ — สลับ session ระหว่างตอบ คำตอบไม่ข้าม
   const image = screenOn ? captureFrame() : null;
   // multi-turn: ประวัติ Q&A ก่อนหน้า (items มีแค่ turn เก่า — saveItem รันหลังตอบ); cap + gate ด้วย contextOn
-  const MAX_TURNS=10;
+  const MAX_TURNS=4;   // ลดจาก 10 → input เล็กลง TTFB เร็วขึ้น (จำ 4 คู่ Q&A ล่าสุด)
   const history=(contextOn ? ((sess&&sess.items)||[]).slice(-MAX_TURNS) : [])
     .flatMap(it=>[{role:"user",text:it.q},{role:"assistant",text:it.raw}]);
   addUserMsg(q, !!image);
@@ -30,7 +30,7 @@ async function submit(override){
       const full=await streamLLM(req,(full)=>{ if(!_ft){ _ft=true; plog("⑤ first token (เริ่มเห็นคำตอบ)"); } ans.innerHTML=mdToHtml(full); scrollBottom(); });
       plog("⑥ stream done (คำตอบครบ)");
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
-      if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}, sess); genFollowups(aiBubble, q, full); }
+      if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}, sess); }
     }catch(e){ ans.textContent=""; ans.appendChild(el("span","warn","⚠ "+esc(e.message))); }
   } else {
     const bubble=addAiMsg();

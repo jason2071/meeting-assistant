@@ -77,7 +77,12 @@ async function openPip(){
   const comp=d.createElement("div"); comp.className="float-composer";
   comp.innerHTML='<div class="fc-quick">'+quickChipsHTML()+'</div><div class="fc-inputrow"><button class="fc-mic mic"></button><button class="fc-stop pill stopbtn" style="display:none"></button><input class="fc-input" placeholder="พิมพ์คำถาม…" /><button class="fc-send send">➤</button></div>';
   d.body.appendChild(head); d.body.appendChild(bar); d.body.appendChild(wrap); d.body.appendChild(note); d.body.appendChild(stEl); d.body.appendChild(errEl); d.body.appendChild(comp);
-  startMirror((html)=>{ wrap.innerHTML = html || PIP_EMPTY_HINT; wrap.scrollTop=wrap.scrollHeight; });
+  startMirror((html)=>{   // sticky-bottom: เด้งล่างเฉพาะตอนอยู่ล่าง — scroll ขึ้น = คงตำแหน่ง (ไม่เด้ง)
+    const atBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 60;
+    const prevTop = wrap.scrollTop;
+    wrap.innerHTML = html || PIP_EMPTY_HINT;
+    wrap.scrollTop = atBottom ? wrap.scrollHeight : prevTop;
+  });
   wireFloatControls(d.body); syncFloatControls();
   d.body.addEventListener("click",(e)=>{ const c=e.target.closest(".chip-ask"); if(c){ const t=c.getAttribute("data-ask"); if(t) submit(t); } });   // quick + follow-up chips → ถาม
   if(typeof hkMatch==="function") d.addEventListener("keydown", hkMatch);   // คีย์ลัด focus ในหน้าต่างลอย (browser)
@@ -90,9 +95,19 @@ function closePip(){
   updateFloatBtn();
 }
 
+// ── pre-warm connection: warm TLS ตอนเปิดแชท + ทุก 15s กัน connection idle หลุด (TTFB เร็วขึ้น) ──
+let _warmTimer=null;
+function startWarmLoop(){
+  if(typeof prewarmConn!=="function") return;
+  prewarmConn();   // warm ทันทีตอนเปิด → request แรกก็ warm
+  if(_warmTimer) return;
+  _warmTimer=setInterval(()=>{ if(isOverlayOpen()) prewarmConn(); else stopWarmLoop(); }, 15000);
+}
+function stopWarmLoop(){ if(_warmTimer){ clearInterval(_warmTimer); _warmTimer=null; } }
+
 // ── เปิด/ปิด (dispatch ตาม environment) ──
-function openOverlay(){ if(IS_ELECTRON) openElectron(); else openPip(); }
-function closeOverlay(){ if(IS_ELECTRON) closeElectron(); else closePip(); }
+function openOverlay(){ if(IS_ELECTRON) openElectron(); else openPip(); startWarmLoop(); }
+function closeOverlay(){ if(IS_ELECTRON) closeElectron(); else closePip(); stopWarmLoop(); }
 function isOverlayOpen(){ return IS_ELECTRON ? elecOpen : !!(pipWin && !pipWin.closed); }
 function toggleOverlay(){ if(isOverlayOpen()) closeOverlay(); else openOverlay(); }
 function updateFloatBtn(){ const on=isOverlayOpen(); $("floatBtn").classList.toggle("on",on); $("floatBtn").setAttribute("aria-pressed",String(on)); if(typeof renderSessions==="function") renderSessions(); }   // refresh badge "กำลังใช้" ตามสถานะเปิด/ปิด
