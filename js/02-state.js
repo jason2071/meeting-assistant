@@ -1,6 +1,18 @@
 // 02-state.js — storage (store/skey/getKey) + state + DOM refs ($) + settings/model-select helpers + loadProvider
 // (classic script; loaded in numeric order — top-level globals shared across files)
 
+// ── PERF: timing log หา bottleneck ของ pipeline เสียง→LLM (ชั่วคราว ปิดได้ที่ PERF=false) ──
+// เปิด DevTools console → จะเห็น [perf] <stage> +<delta>ms ทุกช่วง
+const PERF = false;
+function plog(label){
+  if(!PERF) return;
+  const n = performance.now();
+  const d = plog._last ? " +" + Math.round(n - plog._last) + "ms" : "";
+  console.log("%c[perf]", "color:#e07b39;font-weight:700", label + d);
+  plog._last = n;
+}
+function plogReset(label){ plog._last = 0; plog(label); }
+
 // ── Storage helpers ──
 const store = {
   get(k){ try { return localStorage.getItem(k); } catch { return null; } },

@@ -10,6 +10,7 @@ async function submit(override){
   // เสียง qa/est อยู่ใน finalText (ไม่ใช่ textarea) → ถ้าพิมพ์ใช้ค่าจาก textarea ก่อน ไม่งั้น fallback เสียง
   const q=(override!=null ? override : ($("input").value.trim() || finalText)).trim();
   if(!q||busy) return;
+  plog("③ submit() start");
   const key=keyInp.value.trim(), model=modelInp.value.trim();
   if(!key){ showError("ยังไม่ได้ใส่ API key — กลับไปตั้งค่าที่หน้าหลัก"); return; }
   busy=true; showError(""); $("input").value=""; finalText=""; clearVoicePreview(); $("sendBtn").classList.remove("ready");
@@ -25,7 +26,9 @@ async function submit(override){
     const aiBubble=addAiMsg(); const ans=el("div","ans","▍"); aiBubble.appendChild(ans);
     try{
       const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:4096,think:thinkOn,history});  // maxTokens สูงกัน thinking กิน budget; ความสั้นคุมด้วย prompt
-      const full=await streamLLM(req,(full)=>{ ans.innerHTML=mdToHtml(full); scrollBottom(); });
+      let _ft=false;
+      const full=await streamLLM(req,(full)=>{ if(!_ft){ _ft=true; plog("⑤ first token (เริ่มเห็นคำตอบ)"); } ans.innerHTML=mdToHtml(full); scrollBottom(); });
+      plog("⑥ stream done (คำตอบครบ)");
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
       if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}, sess); genFollowups(aiBubble, q, full); }
     }catch(e){ ans.textContent=""; ans.appendChild(el("span","warn","⚠ "+esc(e.message))); }

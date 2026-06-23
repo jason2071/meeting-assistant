@@ -352,7 +352,9 @@ function stopVad(){
 let sxWS=null, sxCtx=null, sxSrc=null, sxProc=null, sxGain=null, sxFinal="", sxReady=false;
 let sxPending="", sxSendTimer=null;   // debounce-merge: รวมท่อนที่ endpoint ตัดติดๆกัน (หยุดคิด) ส่งเป็นก้อนเดียวเมื่อเงียบจริง
 let sxStopping=false, sxRetry=0;       // reconnect: WS หลุดเอง (ไม่ใช่กดหยุด) → ต่อใหม่ ไม่ให้ "ฟังค้าง"
-function sxMergeMs(){ return Math.max(silenceMs, 1500); }   // รอหลัง endpoint ก่อนส่ง — มีพูดต่อ=ยกเลิก รวมต่อ
+// รอหลัง endpoint ก่อนส่ง — Soniox มี max_endpoint_delay เป็นตัวรอหลักแล้ว, debounce นี้แค่กันท่อนติดๆ
+// → สั้นพอ (ครึ่งนึงของ silence, floor 600ms) ไม่ต้อง 1.5s เต็ม. มีพูดต่อ=ยกเลิก รวมต่อ
+function sxMergeMs(){ return Math.max(Math.round(silenceMs*0.5), 600); }
 async function toggleSonioxRecord(){
   if(recOn){ stopSoniox(); return; }
   const key=getKey("soniox");
@@ -384,6 +386,7 @@ async function toggleSonioxRecord(){
       for(const tk of (res.tokens||[])){
         if(tk.text==="<end>" || tk.text==="<fin>"){   // endpoint (เงียบ) → ย้าย final เข้า pending + ตั้ง timer ส่ง (debounce)
           if(sxFinal.trim()){ sxPending=(sxPending?sxPending+" ":"")+sxFinal.trim(); sxFinal=""; }
+          plogReset("① soniox <end> (พูดจบ → เริ่มนับ debounce "+sxMergeMs()+"ms)");
           clearTimeout(sxSendTimer); sxSendTimer=setTimeout(sxCommit, sxMergeMs());
           continue;
         }
@@ -426,7 +429,7 @@ function sxCommit(){
   const txt=((sxPending?sxPending+" ":"")+sxFinal).trim();
   sxPending=""; sxFinal="";
   clearVoicePreview();
-  if(txt){ hybridQ.push(txt); _drainHybridQ(); }
+  if(txt){ plog("② commit → push submit"); hybridQ.push(txt); _drainHybridQ(); }
 }
 // กด ✂️ ส่งเลย / หยุด → ส่งทุกอย่างที่ถอดได้ทันที (ไม่รอ debounce)
 function sonioxFlush(){ sxCommit(); }

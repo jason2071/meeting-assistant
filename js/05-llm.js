@@ -58,7 +58,9 @@ function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024,
 }
 
 async function streamLLM(req, onToken){
+  if(typeof plog==="function") plog("④ fetch → provider (รอ network)");
   const res=await fetch(req.url,{ method:"POST", headers:req.headers, body:JSON.stringify(req.body) });
+  if(typeof plog==="function") plog("④b headers กลับมา (TTFB)");
   if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,400)); }
   const reader=res.body.getReader(); const dec=new TextDecoder();
   let buf="", full=req.prefill||"";
