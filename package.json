@@ -1,6 +1,6 @@
 {
   "name": "meeting-assistant",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Real-time meeting assistant — desktop (Electron) wrapper with transparent always-on-top floating overlay",
   "main": "electron/main.js",
   "scripts": {
