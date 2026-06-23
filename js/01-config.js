@@ -4,9 +4,9 @@
 // ── Provider config ──────────────────────────────────────
 // preset/defaults เน้น fast tier (app นี้เป็น real-time) — กด ↻ ดึง list จริงเพิ่มได้
 const PROVIDERS = {
-  openrouter: { label:"OpenRouter", defaultModel:"google/gemini-2.5-flash-lite",   // lite = TTFB เร็วสุด (~0.8s) สำหรับ realtime meeting
+  openrouter: { label:"OpenRouter", defaultModel:"openai/gpt-5-mini",   // เร็ว+quality: TTFB ~0.5s (reasoning ปิด) + คุณภาพสูง สำหรับ realtime meeting
     hint:"จาก openrouter.ai/keys", vision:true,
-    models:["google/gemini-2.5-flash-lite","google/gemini-3-flash-preview","openai/gpt-5.4-mini","anthropic/claude-haiku-4.5"] },
+    models:["openai/gpt-5-mini","google/gemini-2.5-flash","google/gemini-3-flash-preview","anthropic/claude-haiku-4.5"] },
   gemini: { label:"Gemini", defaultModel:"gemini-3-flash-preview",
     hint:"จาก aistudio.google.com/apikey · free tier (Flash/Flash-Lite)", vision:true,
     models:["gemini-3-flash-preview","gemini-3.1-flash-lite","gemini-3.5-flash","gemini-3.1-pro-preview"] },

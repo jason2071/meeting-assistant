@@ -50,16 +50,18 @@ function buildRequest(p, key, model, {system, text, image, json, maxTokens=1024,
     // ไม่ใส่ max_tokens สำหรับ openai/openrouter — gpt-5 reasoning เผา token แล้วเหลือ output ว่าง (est ได้ JSON ว่าง),
     // และบาง model reject max_tokens (ต้อง max_completion_tokens). ปล่อยใช้ default ของ model (กว้างพอ)
     body:{ model, stream:true, stream_options:{include_usage:true}, messages:[{role:"system",content:system},...history.map(h=>({role:h.role,content:h.text})),{role:"user",content:userContent}],
-      ...(p==="openrouter"&&!think?{reasoning:{enabled:false}}:{}),   // OpenRouter: think=false → ปิด reasoning
+      // OpenRouter reasoning ตอน think=false: gpt-5 ปิดไม่ได้ (400) + default คิดนาน 7s → ใช้ effort:minimal (first token ~0.7s);
+      // model อื่น → enabled:false (ปิด thinking). think=true → ปล่อย default ของ model
+      ...(p==="openrouter" ? (/gpt-5/i.test(model) ? (think?{}:{reasoning:{effort:"minimal"}}) : (think?{}:{reasoning:{enabled:false}})) : {}),
       ...(json?{response_format:{type:"json_object"}}:{}) },
     extract:(j)=>j.choices?.[0]?.delta?.content||"",
     usage:(j)=>j.usage?{in:j.usage.prompt_tokens,out:j.usage.completion_tokens}:null,  // chunk ท้าย (stream_options)
   };
 }
 
-async function streamLLM(req, onToken){
+async function streamLLM(req, onToken, signal){
   if(typeof plog==="function") plog("④ fetch → provider (รอ network)");
-  const res=await fetch(req.url,{ method:"POST", headers:req.headers, body:JSON.stringify(req.body) });
+  const res=await fetch(req.url,{ method:"POST", headers:req.headers, body:JSON.stringify(req.body), signal });
   if(typeof plog==="function") plog("④b headers กลับมา (TTFB)");
   if(!res.ok){ const t=await res.text(); throw new Error((t||res.statusText).slice(0,400)); }
   const reader=res.body.getReader(); const dec=new TextDecoder();

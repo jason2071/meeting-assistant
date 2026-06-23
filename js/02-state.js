@@ -3,7 +3,7 @@
 
 // ── PERF: timing log หา bottleneck ของ pipeline เสียง→LLM (ชั่วคราว ปิดได้ที่ PERF=false) ──
 // เปิด DevTools console → จะเห็น [perf] <stage> +<delta>ms ทุกช่วง
-const PERF = false;
+const PERF = true;
 function plog(label){
   if(!PERF) return;
   const n = performance.now();

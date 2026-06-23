@@ -238,6 +238,7 @@ function resetListen(){
   micOn=false; stopped=false; clearTimeout(silenceTimer); try{rec&&rec.stop();}catch{} stopVad();
   if(sttEngine==="soniox" && recOn){ stopSoniox(); }
   if(recOn){ recOn=false; hybridRec=false; try{mediaRec&&mediaRec.state!=="inactive"&&mediaRec.stop();}catch{} try{audioStream&&audioStream.getTracks().forEach(t=>t.stop());}catch{} hybridQ=[]; }
+  if(voiceAbort){ try{voiceAbort.abort();}catch{} voiceAbort=null; voiceLastSent=""; }   // ยกเลิกคำตอบค้างของ session เก่า
   finalText=""; clearVoicePreview(); lockComposer(false); setMicUI(); refreshStatus();
 }
 // จบ — ล้างทิ้ง + ปิดแชร์จอ + ล็อก composer (session นี้ view ได้อย่างเดียว, resume ไม่ได้)
@@ -261,10 +262,16 @@ $("stopBtn").onclick=()=>{   // ✂️ ส่งเลย (ทุกโหมด
 // ── สด+AI (gemini mode): auto-cut ต่อเนื่อง — กดเริ่มครั้งเดียว พูดเรื่อยๆ, Web Speech เป็น VAD,
 //    เงียบ → ตัดคลิป → Gemini ถอด → ส่ง → ฟังต่อ (hands-free + แม่น). กดอีกครั้ง = หยุด
 let hybridQ=[];   // คิวข้อความรอส่ง (กัน busy ชนกันตอน AI กำลังตอบ)
+let voiceAbort=null, voiceLastSent="";   // abort คำตอบที่ส่งไป ตอนผู้พูดพูดต่อ (send-on-endpoint) → merge ส่งใหม่
 async function _drainHybridQ(){
   if(busy || !hybridQ.length) return;
-  const t=hybridQ.shift();
-  await submit(t);
+  const item=hybridQ.shift();
+  const t=typeof item==="string"?item:item.text;
+  const manual=!!(item && item.manual);   // กด ✂ ส่งเลย = authoritative ห้าม abort (auto send-on-endpoint เท่านั้นที่ abort ได้)
+  const ac=new AbortController();
+  voiceAbort=manual?null:ac; voiceLastSent=manual?"":t;
+  await submit(t,{signal:manual?undefined:ac.signal});
+  if(!manual && voiceAbort===ac){ voiceAbort=null; voiceLastSent=""; }   // เสร็จปกติ (ถูก abort = handler เคลียร์เอง)
   _drainHybridQ();
 }
 function startHybridClip(){
@@ -352,9 +359,9 @@ function stopVad(){
 let sxWS=null, sxCtx=null, sxSrc=null, sxProc=null, sxGain=null, sxFinal="", sxReady=false;
 let sxPending="", sxSendTimer=null;   // debounce-merge: รวมท่อนที่ endpoint ตัดติดๆกัน (หยุดคิด) ส่งเป็นก้อนเดียวเมื่อเงียบจริง
 let sxStopping=false, sxRetry=0;       // reconnect: WS หลุดเอง (ไม่ใช่กดหยุด) → ต่อใหม่ ไม่ให้ "ฟังค้าง"
-// รอหลัง endpoint ก่อนส่ง — Soniox มี max_endpoint_delay เป็นตัวรอหลักแล้ว, debounce นี้แค่กันท่อนติดๆ
-// → สั้นพอ (ครึ่งนึงของ silence, floor 600ms) ไม่ต้อง 1.5s เต็ม. มีพูดต่อ=ยกเลิก รวมต่อ
-function sxMergeMs(){ return Math.max(Math.round(silenceMs*0.5), 600); }
+// micro-debounce หลัง <end> ก่อนส่ง — coalesce <end> ถี่ตอน micro-pause (กัน abort storm)
+// สั้น (350ms) พอให้ยังเร็ว; พูดต่อใน 350ms = ยกเลิก timer (ไม่ส่ง ไม่ต้อง abort)
+const SX_SEND_DELAY=350;
 async function toggleSonioxRecord(){
   if(recOn){ stopSoniox(); return; }
   const key=getKey("soniox");
@@ -387,12 +394,15 @@ async function toggleSonioxRecord(){
       if(res.error_code){ showError("Soniox: "+(res.error_message||res.error_type||res.error_code)); stopSoniox(); return; }
       let partial="";
       for(const tk of (res.tokens||[])){
-        if(tk.text==="<end>" || tk.text==="<fin>"){   // endpoint (เงียบ) → ย้าย final เข้า pending + ตั้ง timer ส่ง (debounce)
+        if(tk.text==="<end>" || tk.text==="<fin>"){   // endpoint (เงียบ) → micro-debounce 350ms กัน <end> ถี่ตอน micro-pause (abort storm)
           if(sxFinal.trim()){ sxPending=(sxPending?sxPending+" ":"")+sxFinal.trim(); sxFinal=""; }
-          clearTimeout(sxSendTimer); sxSendTimer=setTimeout(sxCommit, sxMergeMs());
+          plogReset("① soniox <end> → debounce "+SX_SEND_DELAY+"ms");
+          clearTimeout(sxSendTimer); sxSendTimer=setTimeout(sxCommit, SX_SEND_DELAY);
           continue;
         }
-        clearTimeout(sxSendTimer); sxSendTimer=null;   // มี token จริง = ยังพูดอยู่ → ยกเลิกส่งที่ค้าง (รวมต่อ)
+        // มี token จริง = ยังพูดอยู่:
+        clearTimeout(sxSendTimer); sxSendTimer=null;   // (ก) ยังไม่ส่ง → ยกเลิก timer ที่ค้าง (coalesce ฟรี ไม่ต้อง abort)
+        if(voiceAbort && busy){ plog("✂ พูดต่อหลังส่ง → abort + merge"); voiceAbort.abort(); sxPending=voiceLastSent+(sxPending?" "+sxPending:""); voiceAbort=null; voiceLastSent=""; }   // (ข) ส่งไปแล้ว (pause>350ms) → abort
         if(tk.is_final) sxFinal+=tk.text; else partial+=tk.text;
       }
       const prev=((sxPending?sxPending+" ":"")+sxFinal+partial).trim();
@@ -426,16 +436,19 @@ async function toggleSonioxRecord(){
   }catch(e){ showError("เริ่ม Soniox ไม่สำเร็จ: "+esc(e.message)); stopSoniox(); return; }
   updateVoicePreview("(กำลังฟัง…)"); setMicUI(); refreshStatus();
 }
-// commit: รวม pending + final ที่สะสม → ส่งเป็นก้อนเดียว (เรียกจาก debounce timer หลังเงียบจริง)
-function sxCommit(){
+// commit: รวม pending + final ที่สะสม → ส่งเป็นก้อนเดียว
+//   manual=true (กด ✂ ส่งเลย) → ส่งแบบ authoritative ห้าม abort (auto จาก debounce timer = abort ได้)
+function sxCommit(manual){
   clearTimeout(sxSendTimer); sxSendTimer=null;
   const txt=((sxPending?sxPending+" ":"")+sxFinal).trim();
   sxPending=""; sxFinal="";
+  // กด ส่งเลย ตอนมีคำตอบ auto ค้างอยู่ → ยกเลิก abort tracking ของตัวนั้น (ไม่ให้พูดต่อไป abort คำตอบที่เพิ่งกดส่ง)
+  if(manual && voiceAbort){ voiceAbort=null; voiceLastSent=""; }
   clearVoicePreview();
-  if(txt){ plog("② commit → push submit"); hybridQ.push(txt); _drainHybridQ(); }
+  if(txt){ plog("② commit → push submit"+(manual?" (manual)":"")); hybridQ.push(manual?{text:txt,manual:true}:txt); _drainHybridQ(); }
 }
-// กด ✂️ ส่งเลย / หยุด → ส่งทุกอย่างที่ถอดได้ทันที (ไม่รอ debounce)
-function sonioxFlush(){ sxCommit(); }
+// กด ✂️ ส่งเลย → ส่งทันที แบบ authoritative (ไม่ถูก abort ถ้าพูดต่อ)
+function sonioxFlush(){ sxCommit(true); }
 function stopSoniox(){
   recOn=false; sxStopping=true; sxRetry=0;   // กดหยุด/error → ห้าม reconnect
   sonioxFlush();   // ส่งเศษสุดท้าย

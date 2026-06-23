@@ -6,10 +6,17 @@ $("sendBtn").onclick=()=>submit();
 $("input").addEventListener("keydown",(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") submit(); });
 $("input").addEventListener("input",()=>{ const v=$("input").value.trim(); $("sendBtn").classList.toggle("ready",!!v&&!busy); });
 
-async function submit(override){
+// ลบ bubble คู่ (คำถาม+คำตอบ) ออก — ใช้ตอน abort (เสียงพูดต่อ → คำตอบเดิมถูกแทน)
+function removeMsgPair(userMsg, aiBubble){
+  if(userMsg && userMsg.parentNode){ userMsg.remove(); items=Math.max(0,items-1); }
+  if(aiBubble && aiBubble.parentNode) aiBubble.parentNode.remove();   // aiBubble=.bubble → ลบ .msg.ai ทั้งก้อน
+  bumpCount(); scrollBottom();
+}
+async function submit(override, opts={}){
   // เสียง qa/est อยู่ใน finalText (ไม่ใช่ textarea) → ถ้าพิมพ์ใช้ค่าจาก textarea ก่อน ไม่งั้น fallback เสียง
   const q=(override!=null ? override : ($("input").value.trim() || finalText)).trim();
   if(!q||busy) return;
+  const signal=opts.signal;
   plog("③ submit() start");
   const key=keyInp.value.trim(), model=modelInp.value.trim();
   if(!key){ showError("ยังไม่ได้ใส่ API key — กลับไปตั้งค่าที่หน้าหลัก"); return; }
@@ -20,30 +27,36 @@ async function submit(override){
   const MAX_TURNS=4;   // ลดจาก 10 → input เล็กลง TTFB เร็วขึ้น (จำ 4 คู่ Q&A ล่าสุด)
   const history=(contextOn ? ((sess&&sess.items)||[]).slice(-MAX_TURNS) : [])
     .flatMap(it=>[{role:"user",text:it.q},{role:"assistant",text:it.raw}]);
-  addUserMsg(q, !!image);
+  const userMsg=addUserMsg(q, !!image);
 
   if(mode==="qa"){
     const aiBubble=addAiMsg(); const ans=el("div","ans","▍"); aiBubble.appendChild(ans);
     try{
       const req=buildRequest(provider,key,model,{system:QA_SYSTEM+stackLine(),text:q,image,json:false,maxTokens:4096,think:thinkOn,history});  // maxTokens สูงกัน thinking กิน budget; ความสั้นคุมด้วย prompt
       let _ft=false;
-      const full=await streamLLM(req,(full)=>{ if(!_ft){ _ft=true; plog("⑤ first token (เริ่มเห็นคำตอบ)"); } ans.innerHTML=mdToHtml(full); scrollBottom(); });
+      const full=await streamLLM(req,(full)=>{ if(!_ft){ _ft=true; plog("⑤ first token (เริ่มเห็นคำตอบ)"); } ans.innerHTML=mdToHtml(full); scrollBottom(); }, signal);
       plog("⑥ stream done (คำตอบครบ)");
       if(!ans.textContent.trim()) ans.textContent="(ไม่มีคำตอบ)";
       if(full && full.trim()){ const tok=addCost(req.usageAcc); aiBubble.appendChild(tokBadge(tok)); saveItem({q, mode:"qa", hadImage:!!image, raw:full, tok}, sess); }
-    }catch(e){ ans.textContent=""; ans.appendChild(el("span","warn","⚠ "+esc(e.message))); }
+    }catch(e){
+      if(e.name==="AbortError"){ removeMsgPair(userMsg, aiBubble); }   // เสียงพูดต่อ → คำตอบนี้ถูกแทน ลบทิ้งเงียบๆ
+      else { ans.textContent=""; ans.appendChild(el("span","warn","⚠ "+esc(e.message))); }
+    }
   } else {
     const bubble=addAiMsg();
     const load=el("div","mono","กำลังประเมิน…"); load.style.color="var(--muted)"; bubble.appendChild(load);
     try{
       const req=buildRequest(provider,key,model,{system:EST_SYSTEM+stackLine(),text:q,image,json:true,maxTokens:4096,think:thinkOn,history});
-      const raw=await streamLLM(req,null);
+      const raw=await streamLLM(req,null,signal);
       const clean=raw.replace(/```json|```/g,"").trim();
       if(!clean || clean==="{") throw new Error("AI ตอบว่าง/ไม่เป็น JSON (อาจถูกตัดหรือ model ไม่รองรับ json mode) — ลองใหม่ หรือเปลี่ยน model");
       const est=looseJSON(clean);
       load.remove(); renderEstimate(bubble,est); const tok=addCost(req.usageAcc); bubble.appendChild(tokBadge(tok)); scrollBottom();
       saveItem({q, mode:"est", hadImage:!!image, raw:JSON.stringify(est), tok}, sess);
-    }catch(e){ load.textContent=""; load.appendChild(el("span","warn","⚠ "+esc(e.message))); }
+    }catch(e){
+      if(e.name==="AbortError"){ removeMsgPair(userMsg, bubble); }
+      else { load.textContent=""; load.appendChild(el("span","warn","⚠ "+esc(e.message))); }
+    }
   }
   busy=false; scrollBottom();
 }
