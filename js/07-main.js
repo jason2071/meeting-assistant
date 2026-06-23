@@ -123,8 +123,10 @@ function renderSessions(){
   const ix=sessIndex();
   homeListEl.innerHTML = ix.length
     ? ix.map(s=>{
-        const md=s.mode || (loadSess(s.id)||{}).mode || "qa";   // fallback ให้ session เก่าที่ index ยังไม่มี mode
-        const cur=s.id===curId;
+        const sess=loadSess(s.id)||{};
+        const md=s.mode || sess.mode || "qa";   // fallback ให้ session เก่าที่ index ยังไม่มี mode
+        // "กำลังใช้" = session ปัจจุบัน + หน้าต่างลอยเปิดจริง + ยังไม่ปิด (stopped) — ปิดแชทแล้ว badge หาย
+        const cur=s.id===curId && !sess.stopped && (typeof isOverlayOpen==="function" ? isOverlayOpen() : true);
         return `<div class="home-card${cur?" active":""} transition-all hover:-translate-y-0.5 hover:shadow-xl" data-id="${s.id}"><span class="m mode-badge">${esc(MODE_LABEL[md]||MODE_LABEL.qa)}</span>${cur?'<span class="cur-badge">● กำลังใช้</span>':''}<div class="t">${esc(s.title||"Session ใหม่")}</div><span class="d">${fmtDate(s.updatedAt)}</span><button class="del" data-del="${s.id}" aria-label="ลบ session ${esc(s.title||"Session ใหม่")}">✕</button></div>`;
       }).join("")
     : `<div class="side-empty">ยังไม่มีประวัติ — กดเริ่มใหม่ด้านบน</div>`;

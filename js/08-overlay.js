@@ -95,7 +95,7 @@ function openOverlay(){ if(IS_ELECTRON) openElectron(); else openPip(); }
 function closeOverlay(){ if(IS_ELECTRON) closeElectron(); else closePip(); }
 function isOverlayOpen(){ return IS_ELECTRON ? elecOpen : !!(pipWin && !pipWin.closed); }
 function toggleOverlay(){ if(isOverlayOpen()) closeOverlay(); else openOverlay(); }
-function updateFloatBtn(){ const on=isOverlayOpen(); $("floatBtn").classList.toggle("on",on); $("floatBtn").setAttribute("aria-pressed",String(on)); }
+function updateFloatBtn(){ const on=isOverlayOpen(); $("floatBtn").classList.toggle("on",on); $("floatBtn").setAttribute("aria-pressed",String(on)); if(typeof renderSessions==="function") renderSessions(); }   // refresh badge "กำลังใช้" ตามสถานะเปิด/ปิด
 $("floatBtn").onclick=toggleOverlay;
 updateFloatBtn();
 
@@ -177,6 +177,7 @@ if(IS_ELECTRON){
     else if(action==="en") $("enBtn").click();
     else if(action==="auto") $("autoBtn").click();
     else if(action==="clear") $("clear").click();   // ล้างแชท (confirm ฝั่ง overlay แล้ว)
+    else if(action==="closeSession"){ if(!floatReadonly && typeof stopListen==="function") stopListen(); closeOverlay(); }   // ปิด ✕ = จบ session (confirm ฝั่ง overlay แล้ว) + ปิดหน้าต่าง
     else if(action==="ask") submit(payload);   // quick/follow-up chip จากหน้าต่างลอย
   });
   electronAPI.onOverlayClosed(()=>{ elecOpen=false; stopMirror(); updateFloatBtn(); });

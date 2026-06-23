@@ -44,6 +44,10 @@
     #overlayResults .msg.user .bubble { border-left:3px solid var(--teal) !important; padding-left:10px; color:#86f1e2; font-weight:600; }
     /* คง bg ของ code block (อ่านโค้ดชัด) */
     #overlayResults pre, #overlayResults code, #overlayResults .codewrap { text-shadow:none; }
+    /* inline code chip บนพื้นมืด: เหลืองอ่านง่าย + เอา bg/border ออก (ไม่ทึบ) */
+    #overlayResults code { color:#ffd43b; background:none; border:none; padding:0; }
+    /* code block ใหญ่ยังคงพื้นเดิม + ตัวอักษรขาว (ไม่ให้เหลืองทั้งบล็อก) */
+    #overlayResults pre code, #overlayResults .codeblock code { color:#fff; background:none; }
     /* control bar: พื้นม่วงดำโปร่งตาม --ov-a */
     .float-composer { background:rgba(52,36,80,var(--ov-a,.72)); }
     /* readonly (ดู session เก่า): ซ่อน composer + โชว์ note */
@@ -185,8 +189,12 @@
     $("ovShield").classList.toggle("on", cp); api.setContentProtection(cp);
     $("ovShield").onclick = () => { cp = !cp; $("ovShield").classList.toggle("on", cp); api.setContentProtection(cp); lsSet("ov_cp", cp ? "1" : "0"); };
 
-    // ── close ──
-    $("ovClose").onclick = () => api.close();
+    // ── close ── = จบ session (ไม่ใช่แค่ซ่อน) → confirm ก่อน แล้วให้ main จบ session + ปิดหน้าต่าง
+    //   (readonly = ดู session เก่า → ปิดเฉยๆ ไม่ถาม/ไม่จบอะไร)
+    $("ovClose").onclick = () => {
+      if (document.body.classList.contains("readonly")) { api.close(); return; }
+      if (confirm("ปิดแชท? session นี้จะถูกปิด — เริ่ม session ใหม่เพื่อถามต่อ")) api.sendAction("closeSession");
+    };
 
     // ── แจ้ง main ว่า overlay พร้อมแล้ว → main จะ push html + control state เริ่มต้นกลับมา ──
     api.sendAction("ready");

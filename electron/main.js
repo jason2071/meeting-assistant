@@ -6,6 +6,7 @@ const path = require("path");
 const fs = require("fs");
 
 const ROOT = path.join(__dirname, "..");
+app.setName("Meeting Assistant");   // dev (npm start) Dock โชว์ชื่อนี้แทน "Electron" — built .app ใช้ productName อยู่แล้ว
 let mainWin = null, overlayWin = null;
 
 // ── overlay window size/position: จำไว้ข้ามครั้ง (ไฟล์ใน userData) ──
@@ -14,6 +15,20 @@ function ovBoundsPath() { return path.join(app.getPath("userData"), "overlay-bou
 function loadOvBounds() { try { return JSON.parse(fs.readFileSync(ovBoundsPath(), "utf8")); } catch { return null; } }
 function saveOvBounds() {
   try { if (overlayWin && !overlayWin.isDestroyed()) fs.writeFileSync(ovBoundsPath(), JSON.stringify(overlayWin.getBounds())); } catch {}
+}
+
+// macOS: overlay (transparent + alwaysOnTop "screen-saver" + visibleOnAllWorkspaces) ทำให้ระบบ flip
+// activation policy เป็น accessory → Dock icon หาย. บังคับกลับ regular + dock.show() ทุกครั้งที่เปิด/ปิด overlay
+// ปิดแชท → คืน Dock icon (regular)
+function showDock() {
+  if (process.platform !== "darwin") return;
+  try { app.setActivationPolicy && app.setActivationPolicy("regular"); } catch {}
+  try { app.dock && app.dock.show(); } catch {}
+}
+// เปิดแชท → ซ่อน Dock icon (ตามที่ต้องการ — โฟกัสที่หน้าต่างลอย)
+function hideDock() {
+  if (process.platform !== "darwin") return;
+  try { app.dock && app.dock.hide(); } catch {}
 }
 
 // security: ทุก renderer — ห้ามเปิดหน้าต่างใหม่ + ห้าม navigate ออกจากไฟล์ที่โหลด (กัน redirect ไป origin อื่น)
@@ -60,6 +75,8 @@ function createOverlay() {
   overlayWin.setAlwaysOnTop(true, "screen-saver");   // ระดับเดียวกับ set-always-on-top (ลอยสูงสุด)
   if (process.platform === "darwin") overlayWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   overlayWin.loadFile(path.join(__dirname, "overlay.html"));
+  overlayWin.on("show", hideDock);   // เปิดแชท → ซ่อน Dock icon
+  hideDock();
   // โหลด overlay ไม่สำเร็จ → ปิดทิ้ง เพื่อให้ "overlay-closed" ยิงกลับ → renderer แก้ elecOpen ไม่ให้ค้าง true
   overlayWin.webContents.on("did-fail-load", () => destroyOverlay());
   overlayWin.on("resized", saveOvBounds);   // จำขนาดหลัง user ขยาย/ย่อ
@@ -67,6 +84,7 @@ function createOverlay() {
   overlayWin.on("close", saveOvBounds);
   overlayWin.on("closed", () => {
     overlayWin = null;
+    showDock();   // ปิด overlay → คืน Dock icon
     if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("overlay-closed");
   });
 }
