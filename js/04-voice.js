@@ -368,25 +368,27 @@ async function toggleSonioxRecord(){
   // เปิด/เปิดใหม่ WebSocket (handler เดิม) — แยกฟังก์ชันเพื่อ reconnect ตอนหลุด โดยไม่แตะ audio graph
   function connectWS(){
     sxReady=false;
-    sxWS=new WebSocket("wss://stt-rt.soniox.com/transcribe-websocket");
-    sxWS.binaryType="arraybuffer";
-    sxWS.onopen=()=>{
+    const ws=new WebSocket("wss://stt-rt.soniox.com/transcribe-websocket");   // ผูก local — guard กัน stale socket (ตัวเก่าที่ถูกแทน) ยิง handler
+    sxWS=ws;
+    ws.binaryType="arraybuffer";
+    ws.onopen=()=>{
+      if(ws!==sxWS) return;
       sxReady=true; sxRetry=0;
-      sxWS.send(JSON.stringify({
+      ws.send(JSON.stringify({
         api_key:key, model:"stt-rt-v5",
         audio_format:"pcm_s16le", sample_rate:Math.round(sxCtx.sampleRate), num_channels:1,
         language_hints:["th","en"], enable_language_identification:true,
         enable_endpoint_detection:true, max_endpoint_delay_ms:2000, endpoint_sensitivity:-0.3   // ตัดเร็วขึ้น แต่ยังกันหั่นกลางประโยคตอนหยุดคิด
       }));
     };
-    sxWS.onmessage=(ev)=>{
+    ws.onmessage=(ev)=>{
+      if(ws!==sxWS) return;
       let res; try{ res=JSON.parse(ev.data); }catch{ return; }
       if(res.error_code){ showError("Soniox: "+(res.error_message||res.error_type||res.error_code)); stopSoniox(); return; }
       let partial="";
       for(const tk of (res.tokens||[])){
         if(tk.text==="<end>" || tk.text==="<fin>"){   // endpoint (เงียบ) → ย้าย final เข้า pending + ตั้ง timer ส่ง (debounce)
           if(sxFinal.trim()){ sxPending=(sxPending?sxPending+" ":"")+sxFinal.trim(); sxFinal=""; }
-          plogReset("① soniox <end> (พูดจบ → เริ่มนับ debounce "+sxMergeMs()+"ms)");
           clearTimeout(sxSendTimer); sxSendTimer=setTimeout(sxCommit, sxMergeMs());
           continue;
         }
@@ -396,9 +398,10 @@ async function toggleSonioxRecord(){
       const prev=((sxPending?sxPending+" ":"")+sxFinal+partial).trim();
       updateVoicePreview(prev?("🗣 "+prev):"(กำลังฟัง…)");
     };
-    sxWS.onerror=()=>{};   // ปล่อยให้ onclose จัดการ (reconnect/แจ้ง)
-    // หลุดเอง (ไม่ใช่กดหยุด/error_code) → ต่อใหม่ คง sxFinal/sxPending ไว้ ไม่ให้ "ฟังค้างไม่ส่ง"
-    sxWS.onclose=()=>{
+    ws.onerror=()=>{};   // ปล่อยให้ onclose จัดการ (reconnect/แจ้ง)
+    // หลุดเอง (ไม่ใช่กดหยุด/error_code/ถูกแทน) → ต่อใหม่ คง sxFinal/sxPending ไว้ ไม่ให้ "ฟังค้างไม่ส่ง"
+    ws.onclose=()=>{
+      if(ws!==sxWS) return;   // stale socket (ถูก connectWS ใหม่แทนแล้ว) → เมิน
       sxReady=false;
       if(sxStopping || !recOn) return;
       if(sxRetry++ >= 5){ showError("Soniox หลุดบ่อย — กดเริ่มฟังใหม่"); stopSoniox(); return; }
@@ -440,9 +443,13 @@ function stopSoniox(){
   try{ sxGain&&sxGain.disconnect(); }catch{}
   try{ sxSrc&&sxSrc.disconnect(); }catch{}
   try{ sxCtx&&sxCtx.close(); }catch{}
-  try{ if(sxWS && sxWS.readyState===1) sxWS.send(""); }catch{}   // empty frame = จบ stream
-  const w=sxWS; if(w) setTimeout(()=>{ try{w.close();}catch{} }, 600);
-  sxWS=null; sxCtx=sxSrc=sxProc=sxGain=null; sxReady=false;
+  const w=sxWS; sxWS=null;   // เคลียร์ ref ก่อน → handler ของ w เป็น stale (ws!==sxWS) เลยไม่ reconnect/ทำงานต่อ
+  if(w){
+    w.onclose=w.onerror=w.onmessage=w.onopen=null;   // detach กัน warning/reconnect ตอนปิด socket ที่ยัง CONNECTING
+    try{ if(w.readyState===1){ w.send(""); setTimeout(()=>{ try{w.close();}catch{} },600); }   // open → ส่ง empty frame จบ stream แล้วค่อยปิด
+         else try{w.close();}catch{} }catch{}                                                  // connecting/closing → ปิดเลย
+  }
+  sxCtx=sxSrc=sxProc=sxGain=null; sxReady=false;
   try{ audioStream&&audioStream.getTracks().forEach(t=>t.stop()); }catch{}
   clearVoicePreview(); setMicUI(); refreshStatus();
 }
